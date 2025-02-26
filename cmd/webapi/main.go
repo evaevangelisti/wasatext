@@ -1,26 +1,4 @@
-/*
-Webapi is the executable for the main web server.
-It builds a web server around APIs from `service/api`.
-Webapi connects to external resources needed (database) and starts two web servers: the API web server, and the debug.
-Everything is served via the API web server, except debug variables (/debug/vars) and profiler infos (pprof).
-
-Usage:
-
-	webapi [flags]
-
-Flags and configurations are handled automatically by the code in `load-configuration.go`.
-
-Return values (exit codes):
-
-	0
-		The program ended successfully (no errors, stopped by signal)
-
-	> 0
-		The program ended due to an error
-
-Note that this program will update the schema of the database to the latest version available (embedded in the
-executable during the build).
-*/
+//go:build webui
 
 package main
 
@@ -29,22 +7,24 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io/fs"
 	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
-	"service/api"
-	"service/database"
-	"service/globaltime"
+	"strings"
 	"syscall"
 
 	"github.com/ardanlabs/conf"
+	"github.com/evaevangelisti/wasaphoto/service/api"
+	"github.com/evaevangelisti/wasaphoto/service/database"
+	"github.com/evaevangelisti/wasaphoto/service/utils/globaltime"
+	"github.com/evaevangelisti/wasaphoto/webui"
+	"github.com/gorilla/handlers"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
 )
 
-// main is the program entry point. The only purpose of this function is to call run() and set the exit code if there is
-// any error
 func main() {
 	if err := run(); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "error: ", err)
@@ -52,19 +32,10 @@ func main() {
 	}
 }
 
-// run executes the program. The body of this function should perform the following steps:
-// * reads the configuration
-// * creates and configure the logger
-// * connects to any external resources (like databases, authenticators, etc.)
-// * creates an instance of the service/api package
-// * starts the principal web server (using the service/api.Router.Handler() for HTTP handlers)
-// * waits for any termination event: SIGTERM signal (UNIX), non-recoverable server error, etc.
-// * closes the principal web server
 func run() error {
 	rand.Seed(globaltime.Now().UnixNano())
 
-	// Load Configuration and defaults
-	cfg, err := loadConfiguration()
+	config, err := loadConfiguration()
 
 	if err != nil {
 		if errors.Is(err, conf.ErrHelpWanted) {
@@ -74,124 +45,123 @@ func run() error {
 		return err
 	}
 
-	// Init logging
 	logger := logrus.New()
 	logger.SetOutput(os.Stdout)
 
-	if cfg.Debug {
+	if config.Debug {
 		logger.SetLevel(logrus.DebugLevel)
 	} else {
 		logger.SetLevel(logrus.InfoLevel)
 	}
 
-	logger.Infof("application initializing")
-
-	// Start Database
+	logger.Infof("initializing application")
 	logger.Println("initializing database support")
-	dbconn, err := sql.Open("sqlite3", cfg.DB.Filename)
+
+	db, err := sql.Open("sqlite3", config.DB.Filename)
 
 	if err != nil {
-		logger.WithError(err).Error("error opening SQLite DB")
-		return fmt.Errorf("opening SQLite: %w", err)
+		logger.WithError(err).Error("failed to open database")
+		return fmt.Errorf("opening database: %w", err)
 	}
 
 	defer func() {
-		logger.Debug("database stopping")
-		_ = dbconn.Close()
+		logger.Debug("closing database connection")
+		_ = db.Close()
 	}()
 
-	db, err := database.New(dbconn)
+	appDatabase, err := database.New(db)
 
 	if err != nil {
-		logger.WithError(err).Error("error creating AppDatabase")
-		return fmt.Errorf("creating AppDatabase: %w", err)
+		logger.WithError(err).Error("failed to create AppDatabase instance")
+		return fmt.Errorf("creating AppDatabase instance: %w", err)
 	}
 
-	// Start (main) API server
 	logger.Info("initializing API server")
 
-	// Make a channel to listen for an interrupt or terminate signal from the OS.
-	// Use a buffered channel because the signal package requires it.
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 
-	// Make a channel to listen for errors coming from the listener. Use a
-	// buffered channel so the goroutine can exit if we don't collect this error.
 	serverErrors := make(chan error, 1)
 
-	// Create the API router
-	apirouter, err := api.New(api.Config{
+	router, err := api.New(api.Config{
 		Logger:   logger,
-		Database: db,
+		Database: appDatabase,
 	})
 
 	if err != nil {
-		logger.WithError(err).Error("error creating the API server instance")
+		logger.WithError(err).Error("failed to create the API server instance")
 		return fmt.Errorf("creating the API server instance: %w", err)
 	}
 
-	router := apirouter.Handler()
+	handler := router.Handler()
 
-	router, err = registerWebUI(router)
+	distDirectory, err := fs.Sub(webui.Dist, "dist")
 
 	if err != nil {
-		logger.WithError(err).Error("error registering web UI handler")
-		return fmt.Errorf("registering web UI handler: %w", err)
+		logger.WithError(err).Error("failed to embed WebUI dist/ directory")
+		return fmt.Errorf("embedding WebUI dist/ directory: %w", err)
 	}
 
-	// Apply CORS policy
-	router = applyCORSHandler(router)
-
-	// Create the API server
-	apiserver := http.Server{
-		Addr:              cfg.Web.APIHost,
-		Handler:           router,
-		ReadTimeout:       cfg.Web.ReadTimeout,
-		ReadHeaderTimeout: cfg.Web.ReadTimeout,
-		WriteTimeout:      cfg.Web.WriteTimeout,
-	}
-
-	// Start the service listening for requests in a separate goroutine
-	go func() {
-		logger.Infof("API listening on %s", apiserver.Addr)
-		serverErrors <- apiserver.ListenAndServe()
-		logger.Infof("stopping API server")
-	}()
-
-	// Waiting for shutdown signal or POSIX signals
-	select {
-	case err := <-serverErrors:
-		// Non-recoverable server error
-		return fmt.Errorf("server error: %w", err)
-
-	case sig := <-shutdown:
-		logger.Infof("signal %v received, start shutdown", sig)
-
-		// Asking API server to shut down and load shed.
-		err := apirouter.Close()
-
-		if err != nil {
-			logger.WithError(err).Warning("graceful shutdown of apirouter error")
+	handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.RequestURI, "/dashboard/") {
+			http.StripPrefix("/dashboard/", http.FileServer(http.FS(distDirectory))).ServeHTTP(w, r)
+			return
 		}
 
-		// Give outstanding requests a deadline for completion.
-		ctx, cancel := context.WithTimeout(context.Background(), cfg.Web.ShutdownTimeout)
+		handler.ServeHTTP(w, r)
+	})
+
+	handler = handlers.CORS(
+		handlers.AllowedHeaders([]string{
+			"x-example-header",
+		}),
+		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}),
+		handlers.AllowedOrigins([]string{"*"}),
+		handlers.MaxAge(1),
+	)(handler)
+
+	server := http.Server{
+		Addr:              config.Web.APIHost,
+		Handler:           handler,
+		ReadTimeout:       config.Web.ReadTimeout,
+		ReadHeaderTimeout: config.Web.ReadTimeout,
+		WriteTimeout:      config.Web.WriteTimeout,
+	}
+
+	go func() {
+		logger.Infof("API server is listening on %s", server.Addr)
+		serverErrors <- server.ListenAndServe()
+		logger.Infof("API server has stopped")
+	}()
+
+	select {
+	case err := <-serverErrors:
+		return fmt.Errorf("server encountered an error: %w", err)
+
+	case shutdownSignal := <-shutdown:
+		logger.Infof("received signal %v, initiating shutdown", shutdownSignal)
+
+		err := router.Close()
+
+		if err != nil {
+			logger.WithError(err).Warning("error during graceful shutdown of API router")
+		}
+
+		shutdownContext, cancel := context.WithTimeout(context.Background(), config.Web.ShutdownTimeout)
 		defer cancel()
 
-		// Asking listener to shut down and load shed.
-		err = apiserver.Shutdown(ctx)
+		err = server.Shutdown(shutdownContext)
 
 		if err != nil {
 			logger.WithError(err).Warning("error during graceful shutdown of HTTP server")
-			err = apiserver.Close()
+			err = server.Close()
 		}
 
-		// Log the status of this shutdown.
 		switch {
-		case sig == syscall.SIGSTOP:
-			return errors.New("integrity issue caused shutdown")
+		case shutdownSignal == syscall.SIGSTOP:
+			return errors.New("shutdown due to integrity issue")
 		case err != nil:
-			return fmt.Errorf("could not stop server gracefully: %w", err)
+			return fmt.Errorf("could not gracefully stop server: %w", err)
 		}
 	}
 
