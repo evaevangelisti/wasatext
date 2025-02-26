@@ -35,6 +35,7 @@ paths:
                     application/json:
                         schema:
                             type: object
+                            description: User login information
                             properties:
                                 username:
                                     type: string
@@ -51,13 +52,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                type: object
-                                properties:
-                                    userId:
-                                        type: string
-                                        format: uuid
-                                        example: 550e8400-e29b-41d4-a716-446655440000
-                                        description: Unique identifier for the user
+                                $ref: "#/components/schemas/User"
                 "400":
                     $ref: "#/components/responses/BadRequest"
                 "500":
@@ -76,6 +71,7 @@ paths:
                     application/json:
                         schema:
                             type: object
+                            description: User's new username
                             properties:
                                 username:
                                     type: string
@@ -118,26 +114,39 @@ paths:
                     content:
                         application/json:
                             schema:
-                                type: object
-                                description: User's profile information
-                                properties:
-                                    user:
-                                        $ref: "#/components/schemas/User"
-                                    photos:
-                                        type: array
-                                        description: User's uploaded photos
-                                        items:
-                                            $ref: "#/components/schemas/Photo"
-                                    followers:
-                                        type: integer
-                                        minimum: 0
-                                        example: 324
-                                        description: Number of user's followers
-                                    following:
-                                        type: integer
-                                        minimum: 0
-                                        example: 2560
-                                        description: Number of users the user is following
+                                $ref: "#/components/schemas/User"
+                "400":
+                    $ref: "#/components/responses/BadRequest"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "404":
+                    $ref: "#/components/responses/NotFound"
+                "500":
+                    $ref: "#/components/responses/InternalServerError"
+
+    /users/{userId}/photos:
+        get:
+            operationId: getUserPhotos
+            summary: Returns the user's uploaded photos
+            description: |-
+                # Aggiungere descrizione
+            tags:
+                - users
+            parameters:
+                - $ref: "#/components/parameters/UserId"
+            security:
+                - BearerAuth: []
+            responses:
+                "200":
+                    description: User's photos successfully retrieved
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                minItems: 0
+                                description: User's uploaded photos
+                                items:
+                                    $ref: "#/components/schemas/Photo"
                 "400":
                     $ref: "#/components/responses/BadRequest"
                 "401":
@@ -148,9 +157,9 @@ paths:
                     $ref: "#/components/responses/InternalServerError"
 
     /users/{userId}/followers:
-        post:
-            operationId: followUser
-            summary: Follows a user
+        get:
+            operationId: getUserFollowers
+            summary: Returns the user's followers
             description: |-
                 # Aggiungere descrizione
             tags:
@@ -159,6 +168,82 @@ paths:
                 - $ref: "#/components/parameters/UserId"
             security:
                 - BearerAuth: []
+            responses:
+                "200":
+                    description: User's followers successfully retrieved
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                minItems: 0
+                                description: User's followers
+                                items:
+                                    $ref: "#/components/schemas/User"
+                "400":
+                    $ref: "#/components/responses/BadRequest"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "404":
+                    $ref: "#/components/responses/NotFound"
+                "500":
+                    $ref: "#/components/responses/InternalServerError"
+
+    /users/{userId}/following:
+        parameters:
+            - $ref: "#/components/parameters/UserId"
+        get:
+            operationId: getUserFollowing
+            summary: Returns the users the user is following
+            description: |-
+                # Aggiungere descrizione
+            tags:
+                - users
+            security:
+                - BearerAuth: []
+            responses:
+                "200":
+                    description: User's following users successfully retrieved
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                minItems: 0
+                                description: Users the user is following
+                                items:
+                                    $ref: "#/components/schemas/User"
+                "400":
+                    $ref: "#/components/responses/BadRequest"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "404":
+                    $ref: "#/components/responses/NotFound"
+                "500":
+                    $ref: "#/components/responses/InternalServerError"
+        post:
+            operationId: followUser
+            summary: Follows a user
+            description: |-
+                # Aggiungere descrizione
+            tags:
+                - users
+            security:
+                - BearerAuth: []
+            requestBody:
+                description: User to follow
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            description: User's unique identifier
+                            properties:
+                                userId:
+                                    type: string
+                                    format: uuid
+                                    example: 550e8400-e29b-41d4-a716-446655440000
+                                    description: Unique identifier for the user to follow
+                            required:
+                                - userId
             responses:
                 "201":
                     description: Follow action successful
@@ -170,10 +255,14 @@ paths:
                     $ref: "#/components/responses/BadRequest"
                 "401":
                     $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
                 "404":
                     $ref: "#/components/responses/NotFound"
                 "500":
                     $ref: "#/components/responses/InternalServerError"
+
+    /users/{userId}/following/{followeeUserId}:
         delete:
             operationId: unfollowUser
             summary: Unfollows a user
@@ -183,6 +272,15 @@ paths:
                 - users
             parameters:
                 - $ref: "#/components/parameters/UserId"
+                - name: followeeUserId
+                  in: path
+                  description: Unique identifier for the user to unfollow
+                  required: true
+                  schema:
+                      type: string
+                      format: uuid
+                      example: 550e8400-e29b-41d4-a716-446655440000
+                      description: Unique identifier for the user
             security:
                 - BearerAuth: []
             responses:
@@ -192,6 +290,8 @@ paths:
                     $ref: "#/components/responses/BadRequest"
                 "401":
                     $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
                 "404":
                     $ref: "#/components/responses/NotFound"
                 "500":
@@ -207,6 +307,22 @@ paths:
                 - users
             parameters:
                 - $ref: "#/components/parameters/UserId"
+            requestBody:
+                description: User to ban
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            description: User's unique identifier
+                            properties:
+                                bannedUserId:
+                                    type: string
+                                    format: uuid
+                                    example: 550e8400-e29b-41d4-a716-446655440000
+                                    description: Unique identifier for the user to ban
+                            required:
+                                - bannedUserId
             security:
                 - BearerAuth: []
             responses:
@@ -220,10 +336,14 @@ paths:
                     $ref: "#/components/responses/BadRequest"
                 "401":
                     $ref: "#/components/responses/Unauthorized"
+                "403":
+                    $ref: "#/components/responses/Forbidden"
                 "404":
                     $ref: "#/components/responses/NotFound"
                 "500":
                     $ref: "#/components/responses/InternalServerError"
+
+    /users/{userId}/banned/{bannedUserId}:
         delete:
             operationId: unbanUser
             summary: Unbans a user
@@ -233,6 +353,15 @@ paths:
                 - users
             parameters:
                 - $ref: "#/components/parameters/UserId"
+                - name: bannedUserId
+                  in: path
+                  description: Unique identifier for the user to unban
+                  required: true
+                  schema:
+                      type: string
+                      format: uuid
+                      example: 550e8400-e29b-41d4-a716-446655440000
+                      description: Unique identifier for the user
             security:
                 - BearerAuth: []
             responses:
@@ -264,6 +393,9 @@ paths:
                         application/json:
                             schema:
                                 type: array
+                                minItems: 0
+                                maxItems: 12
+                                description: User's stream of photos
                                 items:
                                     type: object
                                     properties:
@@ -297,6 +429,7 @@ paths:
                     multipart/form-data:
                         schema:
                             type: object
+                            description: Photo file to upload
                             properties:
                                 photo:
                                     type: string
@@ -348,6 +481,8 @@ paths:
                     $ref: "#/components/responses/InternalServerError"
 
     /photos/{photoId}/likes:
+        parameters:
+            - $ref: "#/components/parameters/PhotoId"
         post:
             operationId: likePhoto
             summary: Likes a photo
@@ -355,8 +490,6 @@ paths:
                 # Aggiungere descrizione
             tags:
                 - photos
-            parameters:
-                - $ref: "#/components/parameters/PhotoId"
             security:
                 - BearerAuth: []
             responses:
@@ -381,8 +514,6 @@ paths:
                 # Aggiungere descrizione
             tags:
                 - photos
-            parameters:
-                - $ref: "#/components/parameters/PhotoId"
             security:
                 - BearerAuth: []
             responses:
@@ -414,11 +545,13 @@ paths:
                     application/json:
                         schema:
                             type: object
+                            description: Comment information
                             properties:
                                 content:
                                     type: string
                                     minLength: 1
                                     maxLength: 256
+                                    pattern: "^.+$"
                                     example: "This is a great photo!"
                                     description: The text content of the comment
                             required:
@@ -611,6 +744,7 @@ components:
                     type: string
                     minLength: 1
                     maxLength: 256
+                    pattern: "^.+$"
                     example: "This is a great photo!"
                     description: The text content of the comment
                 commentedAt:
@@ -641,10 +775,16 @@ components:
             properties:
                 code:
                     type: string
+                    minLength: 3
+                    maxLength: 3
+                    pattern: "^[0-9]$"
                     example: "404"
                     description: The HTTP status code for the error
                 message:
                     type: string
+                    minLength: 0
+                    maxLength: 256
+                    pattern: "^.+$"
                     example: The requested resource could not be found
                     description: A message describing the error
             required:
@@ -661,6 +801,7 @@ components:
                 type: string
                 format: uuid
                 example: 550e8400-e29b-41d4-a716-446655440000
+                description: Unique identifier for the user
 
         PhotoId:
             name: photoId
@@ -671,6 +812,7 @@ components:
                 type: string
                 format: uuid
                 example: 550e8400-e29b-41d4-a716-446655440000
+                description: Unique identifier for the photo
 
         CommentId:
             name: commentId
