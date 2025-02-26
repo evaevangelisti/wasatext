@@ -3,13 +3,17 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/evaevangelisti/wasaphoto/service/database"
 	"github.com/julienschmidt/httprouter"
 )
 
-func (router *routerImpl) liveness(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	/* Example of liveness check:
-	if err := rt.DB.Ping(); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}*/
+func Liveness(db database.Database) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		if err := db.Ping(); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
 }

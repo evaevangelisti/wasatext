@@ -1,5 +1,28 @@
 //go:build webui
 
+/*
+This package sets up a web server that serves APIs defined in the `service/api` package.
+It connects to necessary external resources, such as a database, and starts two web servers: one for the API and another for debugging purposes.
+All API requests are handled by the API web server, while debug variables (/debug/vars) and profiling information (pprof) are served by the debug server.
+
+Usage:
+
+	webapi [flags]
+
+Flags and configurations are automatically managed by the code in `service/api/config/config.go`.
+
+Return values (exit codes):
+
+	0
+		The program terminated successfully without errors (e.g., stopped by a signal).
+
+	> 0
+		The program terminated due to an error.
+
+Note that this program will automatically update the database schema to the latest version available.
+The schema is embedded in the executable during the build process.
+*/
+
 package main
 
 import (
@@ -17,6 +40,7 @@ import (
 
 	"github.com/ardanlabs/conf"
 	"github.com/evaevangelisti/wasaphoto/service/api"
+	"github.com/evaevangelisti/wasaphoto/service/config"
 	"github.com/evaevangelisti/wasaphoto/service/database"
 	"github.com/evaevangelisti/wasaphoto/service/utils/globaltime"
 	"github.com/evaevangelisti/wasaphoto/webui"
@@ -27,7 +51,7 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "error: ", err)
+		fmt.Fprintln(os.Stderr, "error: ", err)
 		os.Exit(1)
 	}
 }
@@ -35,7 +59,7 @@ func main() {
 func run() error {
 	rand.Seed(globaltime.Now().UnixNano())
 
-	config, err := loadConfiguration()
+	config, err := config.LoadConfig()
 
 	if err != nil {
 		if errors.Is(err, conf.ErrHelpWanted) {
@@ -57,7 +81,7 @@ func run() error {
 	logger.Infof("initializing application")
 	logger.Println("initializing database support")
 
-	db, err := sql.Open("sqlite3", config.DB.Filename)
+	db, err := sql.Open("sqlite3", config.Database.FilePath)
 
 	if err != nil {
 		logger.WithError(err).Error("failed to open database")
@@ -66,7 +90,7 @@ func run() error {
 
 	defer func() {
 		logger.Debug("closing database connection")
-		_ = db.Close()
+		db.Close()
 	}()
 
 	appDatabase, err := database.New(db)

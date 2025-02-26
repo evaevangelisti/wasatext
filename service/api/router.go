@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/evaevangelisti/wasaphoto/service/api/handlers"
 	"github.com/evaevangelisti/wasaphoto/service/database"
 	"github.com/julienschmidt/httprouter"
 	"github.com/sirupsen/logrus"
@@ -20,9 +21,9 @@ type Router interface {
 }
 
 type routerImpl struct {
-	router   *httprouter.Router
-	logger   logrus.FieldLogger
-	database database.Database
+	httpRouter *httprouter.Router
+	logger     logrus.FieldLogger
+	database   database.Database
 }
 
 func New(config Config) (Router, error) {
@@ -34,20 +35,24 @@ func New(config Config) (Router, error) {
 		return nil, errors.New("database is required")
 	}
 
-	router := httprouter.New()
+	httpRouter := httprouter.New()
 
-	router.RedirectTrailingSlash = false
-	router.RedirectFixedPath = false
+	httpRouter.RedirectTrailingSlash = false
+	httpRouter.RedirectFixedPath = false
 
 	return &routerImpl{
-		router:   router,
-		logger:   config.Logger,
-		database: config.Database,
+		httpRouter: httpRouter,
+		logger:     config.Logger,
+		database:   config.Database,
 	}, nil
 }
 
 func (router *routerImpl) Handler() http.Handler {
-	return router.router
+	httpRouter := router.httpRouter
+
+	httpRouter.GET("/liveness", handlers.Liveness(router.database))
+
+	return httpRouter
 }
 
 func (router *routerImpl) Close() error {
