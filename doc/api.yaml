@@ -1,31 +1,98 @@
 openapi: 3.0.3
 
 info:
-    title: WASAPhoto
+    title: WASAText
     description: |-
-        Keep in touch with your friends by sharing photos of special moments,
-        thanks to WASAPhoto! You can upload your photos directly from your PC,
-        and they will be visible to everyone following you.
+        Connect with your friends effortlessly using WASAText! Send and receive messages, whether one-on-one
+        or in groups, all from the convenience of your PC. Enjoy seamless conversations with text or GIFs and
+        easily stay in touch through your private chats or group discussions.
     version: 1.0.0
 
 servers:
-    - url: http://localhost:8080
+    - url: http://localhost:8080/v1
 
 tags:
     - name: users
       description: Users related operations
-    - name: photos
-      description: Photos related operations
 
 paths:
     /users:
+        get:
+            operationId: getUsers
+            summary: Retrieves a list of users
+            description: |-
+                This endpoint retrieves a list of users.
+                You can filter the users by providing a search term.
+            tags:
+                - users
+            parameters:
+                - name: q
+                  in: query
+                  required: false
+                  description: Search term for filtering users
+                  schema:
+                      type: string
+                      minLength: 1
+                      maxLength: 16
+                      pattern: "^.*$"
+                      example: Maria
+                      description: Search term for filtering users
+                - $ref: "#/components/parameters/cursor"
+                - $ref: "#/components/parameters/limit"
+            responses:
+                "200":
+                    description: Successful response with a list of users
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                description: A list of users
+                                properties:
+                                    users:
+                                        type: array
+                                        minItems: 0
+                                        maxItems: 128
+                                        description: A list of users
+                                        items:
+                                            type: object
+                                            description: User information
+                                            properties:
+                                                userId:
+                                                    $ref: "#/components/schemas/UserId"
+                                                username:
+                                                    $ref: "#/components/schemas/Username"
+                                                photo:
+                                                    $ref: "#/components/schemas/Photo"
+                                                displayName:
+                                                    $ref: "#/components/schemas/DisplayName"
+                                            required:
+                                                - userId
+                                                - username
+                                                - displayName
+                                    nextCursor:
+                                        $ref: "#/components/schemas/Cursor"
+                                required:
+                                    - users
+                            example:
+                                users:
+                                    - userId: "550e8400-e29b-41d4-a716-446655440000"
+                                      username: Maria
+                                      photo: "http://localhost:8080/images/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
+                                      displayName: Maria Rossi
+                                nextCursor: "abc123XYZ"
+                "400":
+                    $ref: "#/components/responses/BadRequest"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "500":
+                    $ref: "#/components/responses/InternalServerError"
         post:
             operationId: doLogin
             summary: Logs in the user
             description: |-
                 If the user does not exist, it will be created,
-                and an identifier is returned.
-                If the user exists, the user identifier is returned
+                and the user is returned.
+                If the user exists, the user is returned
             tags:
                 - users
             requestBody:
@@ -38,12 +105,7 @@ paths:
                             description: User login information
                             properties:
                                 username:
-                                    type: string
-                                    minLength: 3
-                                    maxLength: 16
-                                    pattern: "^[a-zA-Z0-9._-]+$"
-                                    example: Maria
-                                    description: The user's chosen display name
+                                    $ref: "#/components/schemas/Username"
                             required:
                                 - username
             responses:
@@ -53,68 +115,43 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/User"
+                            example:
+                                userId: "550e8400-e29b-41d4-a716-446655440000"
+                                username: Maria
+                                photo: "http://localhost:8080/images/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
+                                displayName: Maria Rossi
+                                description: A passionate software developer
+                                createdAt: "2025-01-01T12:00:00Z"
                 "400":
                     $ref: "#/components/responses/BadRequest"
                 "500":
                     $ref: "#/components/responses/InternalServerError"
-        patch:
-            operationId: setMyUserName
-            summary: Changes the user's name
-            description: |-
-                # Aggiungere descrizione
-            tags:
-                - users
-            requestBody:
-                description: Username to assign to the user
-                required: true
-                content:
-                    application/json:
-                        schema:
-                            type: object
-                            description: User's new username
-                            properties:
-                                username:
-                                    type: string
-                                    minLength: 3
-                                    maxLength: 16
-                                    pattern: "^[a-zA-Z0-9._-]+$"
-                                    example: Maria
-                                    description: The user's chosen display name
-                            required:
-                                - username
-            security:
-                - BearerAuth: []
-            responses:
-                "204":
-                    description: Username change successful
-                "400":
-                    $ref: "#/components/responses/BadRequest"
-                "401":
-                    $ref: "#/components/responses/Unauthorized"
-                "403":
-                    $ref: "#/components/responses/Forbidden"
-                "404":
-                    $ref: "#/components/responses/NotFound"
 
     /users/{userId}:
         get:
             operationId: getUserProfile
-            summary: Returns the user's profile
+            summary: Retrieves a user's profile
             description: |-
-                # Aggiungere descrizione
+                This endpoint retrieves a user's profile by their userId.
+                The userId must be a valid UUID.
             tags:
                 - users
             parameters:
-                - $ref: "#/components/parameters/UserId"
-            security:
-                - BearerAuth: []
+                - $ref: "#/components/parameters/userId"
             responses:
                 "200":
-                    description: User successfully retrieved
+                    description: Successful response with user profile
                     content:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/User"
+                            example:
+                                userId: "550e8400-e29b-41d4-a716-446655440000"
+                                username: Maria
+                                photo: "http://localhost:8080/images/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
+                                displayName: Maria Rossi
+                                description: A passionate software developer
+                                createdAt: "2025-01-01T12:00:00Z"
                 "400":
                     $ref: "#/components/responses/BadRequest"
                 "401":
@@ -124,329 +161,106 @@ paths:
                 "500":
                     $ref: "#/components/responses/InternalServerError"
 
-    /users/{userId}/photos:
-        get:
-            operationId: getUserPhotos
-            summary: Returns the user's uploaded photos
-            description: |-
-                # Aggiungere descrizione
-            tags:
-                - users
-            parameters:
-                - $ref: "#/components/parameters/UserId"
-            security:
-                - BearerAuth: []
-            responses:
-                "200":
-                    description: User's photos successfully retrieved
-                    content:
-                        application/json:
-                            schema:
-                                type: array
-                                minItems: 0
-                                description: User's uploaded photos
-                                items:
-                                    $ref: "#/components/schemas/Photo"
-                "400":
-                    $ref: "#/components/responses/BadRequest"
-                "401":
-                    $ref: "#/components/responses/Unauthorized"
-                "404":
-                    $ref: "#/components/responses/NotFound"
-                "500":
-                    $ref: "#/components/responses/InternalServerError"
-
-    /users/{userId}/followers:
-        get:
-            operationId: getUserFollowers
-            summary: Returns the user's followers
-            description: |-
-                # Aggiungere descrizione
-            tags:
-                - users
-            parameters:
-                - $ref: "#/components/parameters/UserId"
-            security:
-                - BearerAuth: []
-            responses:
-                "200":
-                    description: User's followers successfully retrieved
-                    content:
-                        application/json:
-                            schema:
-                                type: array
-                                minItems: 0
-                                description: User's followers
-                                items:
-                                    $ref: "#/components/schemas/User"
-                "400":
-                    $ref: "#/components/responses/BadRequest"
-                "401":
-                    $ref: "#/components/responses/Unauthorized"
-                "404":
-                    $ref: "#/components/responses/NotFound"
-                "500":
-                    $ref: "#/components/responses/InternalServerError"
-
-    /users/{userId}/following:
-        parameters:
-            - $ref: "#/components/parameters/UserId"
-        get:
-            operationId: getUserFollowing
-            summary: Returns the users the user is following
-            description: |-
-                # Aggiungere descrizione
-            tags:
-                - users
-            security:
-                - BearerAuth: []
-            responses:
-                "200":
-                    description: User's following users successfully retrieved
-                    content:
-                        application/json:
-                            schema:
-                                type: array
-                                minItems: 0
-                                description: Users the user is following
-                                items:
-                                    $ref: "#/components/schemas/User"
-                "400":
-                    $ref: "#/components/responses/BadRequest"
-                "401":
-                    $ref: "#/components/responses/Unauthorized"
-                "404":
-                    $ref: "#/components/responses/NotFound"
-                "500":
-                    $ref: "#/components/responses/InternalServerError"
-        post:
-            operationId: followUser
-            summary: Follows a user
-            description: |-
-                # Aggiungere descrizione
-            tags:
-                - users
-            security:
-                - BearerAuth: []
-            requestBody:
-                description: User to follow
-                required: true
-                content:
-                    application/json:
-                        schema:
-                            type: object
-                            description: User's unique identifier
-                            properties:
-                                userId:
-                                    type: string
-                                    format: uuid
-                                    example: 550e8400-e29b-41d4-a716-446655440000
-                                    description: Unique identifier for the user to follow
-                            required:
-                                - userId
-            responses:
-                "201":
-                    description: Follow action successful
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/Follow"
-                "400":
-                    $ref: "#/components/responses/BadRequest"
-                "401":
-                    $ref: "#/components/responses/Unauthorized"
-                "403":
-                    $ref: "#/components/responses/Forbidden"
-                "404":
-                    $ref: "#/components/responses/NotFound"
-                "500":
-                    $ref: "#/components/responses/InternalServerError"
-
-    /users/{userId}/following/{followeeUserId}:
+    /me:
         delete:
-            operationId: unfollowUser
-            summary: Unfollows a user
+            operationId: deleteMyUserProfile
+            summary: Deletes the user's profile
             description: |-
-                # Aggiungere descrizione
+                This endpoint deletes the user's profile.
+                The user must be authenticated to perform this action.
             tags:
                 - users
-            parameters:
-                - $ref: "#/components/parameters/UserId"
-                - name: followeeUserId
-                  in: path
-                  description: Unique identifier for the user to unfollow
-                  required: true
-                  schema:
-                      type: string
-                      format: uuid
-                      example: 550e8400-e29b-41d4-a716-446655440000
-                      description: Unique identifier for the user
             security:
                 - BearerAuth: []
             responses:
                 "204":
-                    description: Unfollow action successful
-                "400":
-                    $ref: "#/components/responses/BadRequest"
+                    description: User profile deleted successfully
                 "401":
                     $ref: "#/components/responses/Unauthorized"
-                "403":
-                    $ref: "#/components/responses/Forbidden"
                 "404":
                     $ref: "#/components/responses/NotFound"
                 "500":
                     $ref: "#/components/responses/InternalServerError"
 
-    /users/{userId}/banned:
-        post:
-            operationId: banUser
-            summary: Bans a user
+    /me/username:
+        patch:
+            operationId: setMyUsername
+            summary: Updates the user's username
             description: |-
-                # Aggiungere descrizione
+                This endpoint updates the user's username.
+                The user must be authenticated to perform this action.
             tags:
                 - users
-            parameters:
-                - $ref: "#/components/parameters/UserId"
             requestBody:
-                description: User to ban
+                description: New username
                 required: true
                 content:
-                    application/json:
+                    application/merge-patch+json:
                         schema:
                             type: object
-                            description: User's unique identifier
+                            description: New username
                             properties:
-                                bannedUserId:
-                                    type: string
-                                    format: uuid
-                                    example: 550e8400-e29b-41d4-a716-446655440000
-                                    description: Unique identifier for the user to ban
-                            required:
-                                - bannedUserId
-            security:
-                - BearerAuth: []
-            responses:
-                "201":
-                    description: Ban action successful
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/Ban"
-                "400":
-                    $ref: "#/components/responses/BadRequest"
-                "401":
-                    $ref: "#/components/responses/Unauthorized"
-                "403":
-                    $ref: "#/components/responses/Forbidden"
-                "404":
-                    $ref: "#/components/responses/NotFound"
-                "500":
-                    $ref: "#/components/responses/InternalServerError"
-
-    /users/{userId}/banned/{bannedUserId}:
-        delete:
-            operationId: unbanUser
-            summary: Unbans a user
-            description: |-
-                # Aggiungere descrizione
-            tags:
-                - users
-            parameters:
-                - $ref: "#/components/parameters/UserId"
-                - name: bannedUserId
-                  in: path
-                  description: Unique identifier for the user to unban
-                  required: true
-                  schema:
-                      type: string
-                      format: uuid
-                      example: 550e8400-e29b-41d4-a716-446655440000
-                      description: Unique identifier for the user
-            security:
-                - BearerAuth: []
-            responses:
-                "204":
-                    description: Unban action successful
-                "400":
-                    $ref: "#/components/responses/BadRequest"
-                "401":
-                    $ref: "#/components/responses/Unauthorized"
-                "404":
-                    $ref: "#/components/responses/NotFound"
-                "500":
-                    $ref: "#/components/responses/InternalServerError"
-
-    /stream:
-        get:
-            operationId: getMyStream
-            summary: Returns the user's stream
-            description: |-
-                # Aggiungere descrizione
-            tags:
-                - photos
+                                username:
+                                    $ref: "#/components/schemas/Username"
             security:
                 - BearerAuth: []
             responses:
                 "200":
-                    description: Stream successfully retrieved
+                    description: Username updated successfully
                     content:
                         application/json:
                             schema:
-                                type: array
-                                minItems: 0
-                                maxItems: 12
-                                description: User's stream of photos
-                                items:
-                                    type: object
-                                    properties:
-                                        photo:
-                                            $ref: "#/components/schemas/Photo"
-                                        likes:
-                                            type: integer
-                                            minimum: 0
-                                            example: 133
-                                            description: Number of likes the photo has
-                                        comments:
-                                            type: integer
-                                            minimum: 0
-                                            example: 42
-                                            description: Number of comments the photo has
+                                $ref: "#/components/schemas/User"
+                            example:
+                                userId: "550e8400-e29b-41d4-a716-446655440000"
+                                username: Maria
+                                photo: "http://localhost:8080/images/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
+                                displayName: Maria Rossi
+                                description: A passionate software developer
+                                createdAt: "2025-01-01T12:00:00Z"
+                "400":
+                    $ref: "#/components/responses/BadRequest"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
                 "500":
                     $ref: "#/components/responses/InternalServerError"
 
-    /photos:
-        post:
-            operationId: uploadPhoto
-            summary: Uploads a photo
+    /me/photo:
+        patch:
+            operationId: setMyPhoto
+            summary: Updates the user's profile photo
             description: |-
-                # Aggiungere descrizione
+                This endpoint updates the user's profile photo.
+                The user must be authenticated to perform this action.
             tags:
-                - photos
+                - users
             requestBody:
-                description: Photo to upload
+                description: New profile photo
                 required: true
                 content:
-                    multipart/form-data:
+                    application/merge-patch+json:
                         schema:
                             type: object
-                            description: Photo file to upload
+                            description: New profile photo
                             properties:
                                 photo:
-                                    type: string
-                                    format: binary
-                                    example: (binary data)
-                                    description: The photo file
-                            required:
-                                - photo
+                                    $ref: "#/components/schemas/Photo"
             security:
                 - BearerAuth: []
             responses:
-                "201":
-                    description: Photo upload successful
+                "200":
+                    description: Profile photo updated successfully
                     content:
                         application/json:
                             schema:
-                                $ref: "#/components/schemas/Photo"
+                                $ref: "#/components/schemas/User"
+                            example:
+                                userId: "550e8400-e29b-41d4-a716-446655440000"
+                                username: Maria
+                                photo: "http://localhost:8080/images/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
+                                displayName: Maria Rossi
+                                description: A passionate software developer
+                                createdAt: "2025-01-01T12:00:00Z"
                 "400":
                     $ref: "#/components/responses/BadRequest"
                 "401":
@@ -454,150 +268,89 @@ paths:
                 "500":
                     $ref: "#/components/responses/InternalServerError"
 
-    /photos/{photoId}:
-        delete:
-            operationId: deletePhoto
-            summary: Deletes a photo
+    /me/display_name:
+        patch:
+            operationId: setMyDisplayName
+            summary: Updates the user's display name
             description: |-
-                # Aggiungere descrizione
+                This endpoint updates the user's display name.
+                The user must be authenticated to perform this action.
             tags:
-                - photos
-            parameters:
-                - $ref: "#/components/parameters/PhotoId"
-            security:
-                - BearerAuth: []
-            responses:
-                "204":
-                    description: Photo deletion successful
-                "400":
-                    $ref: "#/components/responses/BadRequest"
-                "401":
-                    $ref: "#/components/responses/Unauthorized"
-                "403":
-                    $ref: "#/components/responses/Forbidden"
-                "404":
-                    $ref: "#/components/responses/NotFound"
-                "500":
-                    $ref: "#/components/responses/InternalServerError"
-
-    /photos/{photoId}/likes:
-        parameters:
-            - $ref: "#/components/parameters/PhotoId"
-        post:
-            operationId: likePhoto
-            summary: Likes a photo
-            description: |-
-                # Aggiungere descrizione
-            tags:
-                - photos
-            security:
-                - BearerAuth: []
-            responses:
-                "201":
-                    description: Like action successful
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/Like"
-                "400":
-                    $ref: "#/components/responses/BadRequest"
-                "401":
-                    $ref: "#/components/responses/Unauthorized"
-                "404":
-                    $ref: "#/components/responses/NotFound"
-                "500":
-                    $ref: "#/components/responses/InternalServerError"
-        delete:
-            operationId: unlikePhoto
-            summary: Unlikes a photo
-            description: |-
-                # Aggiungere descrizione
-            tags:
-                - photos
-            security:
-                - BearerAuth: []
-            responses:
-                "204":
-                    description: Unlike action successful
-                "400":
-                    $ref: "#/components/responses/BadRequest"
-                "401":
-                    $ref: "#/components/responses/Unauthorized"
-                "404":
-                    $ref: "#/components/responses/NotFound"
-                "500":
-                    $ref: "#/components/responses/InternalServerError"
-
-    /photos/{photoId}/comments:
-        post:
-            operationId: commentPhoto
-            summary: Comments on a photo
-            description: |-
-                # Aggiungere descrizione
-            tags:
-                - photos
-            parameters:
-                - $ref: "#/components/parameters/PhotoId"
+                - users
             requestBody:
-                description: Comment details
+                description: New display name
                 required: true
                 content:
-                    application/json:
+                    application/merge-patch+json:
                         schema:
                             type: object
-                            description: Comment information
+                            description: New display name
                             properties:
-                                content:
-                                    type: string
-                                    minLength: 1
-                                    maxLength: 256
-                                    pattern: "^.+$"
-                                    example: "This is a great photo!"
-                                    description: The text content of the comment
-                            required:
-                                - content
+                                displayName:
+                                    $ref: "#/components/schemas/DisplayName"
             security:
                 - BearerAuth: []
             responses:
-                "201":
-                    description: Comment action successful
+                "200":
+                    description: Display name updated successfully
                     content:
                         application/json:
                             schema:
-                                $ref: "#/components/schemas/Comment"
+                                $ref: "#/components/schemas/User"
+                            example:
+                                userId: "550e8400-e29b-41d4-a716-446655440000"
+                                username: Maria
+                                photo: "http://localhost:8080/images/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
+                                displayName: Maria Rossi
+                                description: A passionate software developer
+                                createdAt: "2025-01-01T12:00:00Z"
                 "400":
                     $ref: "#/components/responses/BadRequest"
                 "401":
                     $ref: "#/components/responses/Unauthorized"
-                "404":
-                    $ref: "#/components/responses/NotFound"
                 "500":
                     $ref: "#/components/responses/InternalServerError"
 
-    /photos/{photoId}/comments/{commentId}:
-        delete:
-            operationId: uncommentPhoto
-            summary: Uncomments a photo
+    /me/description:
+        patch:
+            operationId: setMyDescription
+            summary: Updates the user's description
             description: |-
-                # Aggiungere descrizione
+                This endpoint updates the user's description.
+                The user must be authenticated to perform this action.
             tags:
-                - photos
-            parameters:
-                - $ref: "#/components/parameters/PhotoId"
-                - $ref: "#/components/parameters/CommentId"
+                - users
+            requestBody:
+                description: New description
+                required: true
+                content:
+                    application/merge-patch+json:
+                        schema:
+                            type: object
+                            description: New description
+                            properties:
+                                description:
+                                    $ref: "#/components/schemas/Description"
             security:
                 - BearerAuth: []
             responses:
-                "204":
-                    description: Uncomment action successful
+                "200":
+                    description: Description updated successfully
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/User"
+                            example:
+                                userId: "550e8400-e29b-41d4-a716-446655440000"
+                                username: Maria
+                                photo: "http://localhost:8080/images/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
+                                displayName: Maria Rossi
+                                description: A passionate software developer
+                                createdAt: "2025-01-01T12:00:00Z"
                 "400":
                     $ref: "#/components/responses/BadRequest"
                 "401":
                     $ref: "#/components/responses/Unauthorized"
-                "403":
-                    $ref: "#/components/responses/Forbidden"
-                "404":
-                    $ref: "#/components/responses/NotFound"
                 "500":
                     $ref: "#/components/responses/InternalServerError"
 
@@ -608,166 +361,76 @@ components:
             description: Represents a user in the system
             properties:
                 userId:
-                    type: string
-                    format: uuid
-                    example: 550e8400-e29b-41d4-a716-446655440000
-                    description: Unique identifier for the user
+                    $ref: "#/components/schemas/UserId"
                 username:
-                    type: string
-                    minLength: 3
-                    maxLength: 16
-                    pattern: "^[a-zA-Z0-9._-]+$"
-                    example: Maria
-                    description: The user's chosen display name
+                    $ref: "#/components/schemas/Username"
+                photo:
+                    $ref: "#/components/schemas/Photo"
+                displayName:
+                    $ref: "#/components/schemas/DisplayName"
+                description:
+                    $ref: "#/components/schemas/Description"
                 createdAt:
                     type: string
                     format: date-time
-                    example: 2025-01-01T12:00:00Z
+                    minLength: 20
+                    maxLength: 20
+                    example: "2025-01-01T12:00:00Z"
                     description: The date and time when the user account was created
             required:
                 - userId
                 - username
+                - displayName
                 - createdAt
 
-        Follow:
-            type: object
-            description: Represents a follow relationship between two users
-            properties:
-                followerId:
-                    type: string
-                    format: uuid
-                    example: 550e8400-e29b-41d4-a716-446655440000
-                    description: Unique identifier for the user who is following
-                followingId:
-                    type: string
-                    format: uuid
-                    example: 550e8400-e29b-41d4-a716-446655440000
-                    description: Unique identifier for the user being followed
-                followedAt:
-                    type: string
-                    format: date-time
-                    example: 2025-01-01T12:00:00Z
-                    description: The date and time when the follow action occurred
-            required:
-                - followerId
-                - followingId
-                - followedAt
+        UserId:
+            type: string
+            format: uuid
+            minLength: 36
+            maxLength: 36
+            pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            example: "550e8400-e29b-41d4-a716-446655440000"
+            description: Unique identifier for the user
 
-        Ban:
-            type: object
-            description: Represents a ban action where one user bans another user
-            properties:
-                userId:
-                    type: string
-                    format: uuid
-                    example: 550e8400-e29b-41d4-a716-446655440000
-                    description: Unique identifier for the user who is banning
-                bannedUserId:
-                    type: string
-                    format: uuid
-                    example: 550e8400-e29b-41d4-a716-446655440000
-                    description: Unique identifier for the user being banned
-                bannedAt:
-                    type: string
-                    format: date-time
-                    example: 2025-01-01T12:00:00Z
-                    description: The date and time when the ban action occurred
-            required:
-                - userId
-                - bannedUserId
-                - bannedAt
+        Username:
+            type: string
+            minLength: 3
+            maxLength: 16
+            pattern: "^[a-zA-Z0-9._-]+$"
+            example: Maria
+            description: The user's chosen display name
 
         Photo:
-            type: object
-            description: Represents a photo uploaded by a user
-            properties:
-                photoId:
-                    type: string
-                    format: uuid
-                    example: 550e8400-e29b-41d4-a716-446655440000
-                    description: Unique identifier for the photo
-                photo:
-                    type: string
-                    format: binary
-                    example: (binary data)
-                    description: The photo file
-                uploadedAt:
-                    type: string
-                    format: date-time
-                    example: 2025-01-01T12:00:00Z
-                    description: The date and time when the photo was uploaded
-                userId:
-                    type: string
-                    format: uuid
-                    example: 550e8400-e29b-41d4-a716-446655440000
-                    description: Unique identifier for the user who uploaded the photo
-            required:
-                - photoId
-                - photo
-                - uploadedAt
-                - userId
+            type: string
+            minLength: 83
+            maxLength: 87
+            pattern: "^http://(localhost|127\\.0\\.0\\.1):[0-9]{1,5}/images/profile-pictures/[0-9a-fA-F\\-]{36}\\.jpg$"
+            example: "http://localhost:8080/images/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
+            description: URL to the user's profile picture
 
-        Like:
-            type: object
-            description: Represents a like action where a user likes a photo
-            properties:
-                userId:
-                    type: string
-                    format: uuid
-                    example: 550e8400-e29b-41d4-a716-446655440000
-                    description: Unique identifier for the user who liked the photo
-                photoId:
-                    type: string
-                    format: uuid
-                    example: 550e8400-e29b-41d4-a716-446655440000
-                    description: Unique identifier for the photo that was liked
-                likedAt:
-                    type: string
-                    format: date-time
-                    example: 2025-01-01T12:00:00Z
-                    description: The date and time when the like action occurred
-            required:
-                - userId
-                - photoId
-                - likedAt
+        DisplayName:
+            type: string
+            minLength: 1
+            maxLength: 32
+            pattern: "^.*$"
+            example: Maria Rossi
+            description: User's display name
 
-        Comment:
-            type: object
-            description: Represents a comment made by a user on a photo
-            properties:
-                commentId:
-                    type: string
-                    format: uuid
-                    example: 550e8400-e29b-41d4-a716-446655440000
-                    description: Unique identifier for the comment
-                content:
-                    type: string
-                    minLength: 1
-                    maxLength: 256
-                    pattern: "^.+$"
-                    example: "This is a great photo!"
-                    description: The text content of the comment
-                commentedAt:
-                    type: string
-                    format: date-time
-                    example: 2025-01-01T12:00:00Z
-                    description: The date and time when the comment was made
-                userId:
-                    type: string
-                    format: uuid
-                    example: 550e8400-e29b-41d4-a716-446655440000
-                    description: Unique identifier for the user who made the comment
-                photoId:
-                    type: string
-                    format: uuid
-                    example: 550e8400-e29b-41d4-a716-446655440000
-                    description: Unique identifier for the photo that was commented
-            required:
-                - commentId
-                - content
-                - commentedAt
-                - userId
-                - photoId
+        Description:
+            type: string
+            minLength: 0
+            maxLength: 128
+            pattern: "^.*$"
+            example: A passionate software developer
+            description: A short description of the user
+
+        Cursor:
+            type: string
+            minLength: 8
+            maxLength: 128
+            pattern: "^[a-zA-Z0-9_-]+$"
+            example: "abc123XYZ"
+            description: Cursor for pagination
 
         Error:
             type: object
@@ -775,54 +438,50 @@ components:
             properties:
                 code:
                     type: string
-                    minLength: 3
-                    maxLength: 3
-                    pattern: "^[0-9]$"
-                    example: "404"
-                    description: The HTTP status code for the error
+                    minLength: 9
+                    maxLength: 16
+                    pattern: "^ERR-[0-9]{3}-[A-Z]+$"
+                    example: "ERR-404-USER"
+                    description: A unique error code representing the type of error
                 message:
                     type: string
-                    minLength: 0
+                    minLength: 1
                     maxLength: 256
-                    pattern: "^.+$"
-                    example: The requested resource could not be found
-                    description: A message describing the error
+                    pattern: "^.*$"
+                    example: User not found
+                    description: A human-readable message providing more details about the error
             required:
                 - code
                 - message
 
     parameters:
-        UserId:
+        userId:
             name: userId
             in: path
+            required: true
             description: Unique identifier for the user
-            required: true
             schema:
-                type: string
-                format: uuid
-                example: 550e8400-e29b-41d4-a716-446655440000
-                description: Unique identifier for the user
+                $ref: "#/components/schemas/UserId"
 
-        PhotoId:
-            name: photoId
-            in: path
-            description: Unique identifier for the photo
-            required: true
+        cursor:
+            name: cursor
+            in: query
+            required: false
+            description: Cursor for pagination
             schema:
-                type: string
-                format: uuid
-                example: 550e8400-e29b-41d4-a716-446655440000
-                description: Unique identifier for the photo
+                $ref: "#/components/schemas/Cursor"
 
-        CommentId:
-            name: commentId
-            in: path
-            description: Unique identifier for the comment
-            required: true
+        limit:
+            name: limit
+            in: query
+            required: false
+            description: Maximum number of items to return
             schema:
-                type: string
-                format: uuid
-                example: 550e8400-e29b-41d4-a716-446655440000
+                type: integer
+                minimum: 1
+                maximum: 128
+                default: 32
+                description: Maximum number of items to return
 
     securitySchemes:
         BearerAuth:

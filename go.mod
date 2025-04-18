@@ -1,4 +1,4 @@
-module github.com/evaevangelisti/wasaphoto
+module github.com/evaevangelisti/wasatext
 
 go 1.17
 

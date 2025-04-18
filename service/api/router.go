@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/evaevangelisti/wasaphoto/service/api/handlers"
-	"github.com/evaevangelisti/wasaphoto/service/database"
+	"github.com/evaevangelisti/wasatext/service/api/handlers"
+	"github.com/evaevangelisti/wasatext/service/database"
 	"github.com/julienschmidt/httprouter"
 	"github.com/sirupsen/logrus"
 )

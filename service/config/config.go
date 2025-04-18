@@ -13,7 +13,7 @@ import (
 
 type WebAPIConfig struct {
 	Config struct {
-		FilePath string `conf:"default:/conf/config.yml"`
+		FilePath string `conf:"default:/conf/config.yaml"`
 	}
 
 	Web struct {
@@ -25,7 +25,7 @@ type WebAPIConfig struct {
 	}
 
 	Database struct {
-		FilePath string `conf:"default:/tmp/decaf.db"`
+		FilePath string `conf:"default:/tmp/.db"`
 	}
 
 	Debug bool

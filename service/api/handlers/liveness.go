@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/evaevangelisti/wasaphoto/service/database"
+	"github.com/evaevangelisti/wasatext/service/database"
 	"github.com/julienschmidt/httprouter"
 )
 

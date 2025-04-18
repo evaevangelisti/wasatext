@@ -1,0 +1,3 @@
+.spectral.js
+.golangci.yaml
+webui/eslint.config.mjs
