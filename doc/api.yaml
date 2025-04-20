@@ -33,12 +33,14 @@ paths:
                   schema:
                       type: string
                       minLength: 1
-                      maxLength: 16
+                      maxLength: 50
                       pattern: "^.*$"
                       example: Maria
                       description: Search term for filtering users
                 - $ref: "#/components/parameters/cursor"
                 - $ref: "#/components/parameters/limit"
+            security:
+                - BearerAuth: []
             responses:
                 "200":
                     description: Successful response with a list of users
@@ -51,33 +53,18 @@ paths:
                                     users:
                                         type: array
                                         minItems: 0
-                                        maxItems: 128
+                                        maxItems: 100
                                         description: A list of users
                                         items:
-                                            type: object
-                                            description: User information
-                                            properties:
-                                                userId:
-                                                    $ref: "#/components/schemas/UserId"
-                                                username:
-                                                    $ref: "#/components/schemas/Username"
-                                                photo:
-                                                    $ref: "#/components/schemas/Photo"
-                                                displayName:
-                                                    $ref: "#/components/schemas/DisplayName"
-                                            required:
-                                                - userId
-                                                - username
-                                                - displayName
+                                            $ref: "#/components/schemas/UserWithoutIdSummary"
                                     nextCursor:
                                         $ref: "#/components/schemas/Cursor"
                                 required:
                                     - users
                             example:
                                 users:
-                                    - userId: "550e8400-e29b-41d4-a716-446655440000"
-                                      username: Maria
-                                      photo: "http://localhost:8080/images/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
+                                    - username: Maria
+                                      photo: "http://localhost:8080/images/profile-pictures/Maria.jpg"
                                       displayName: Maria Rossi
                                 nextCursor: "abc123XYZ"
                 "400":
@@ -115,19 +102,12 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/User"
-                            example:
-                                userId: "550e8400-e29b-41d4-a716-446655440000"
-                                username: Maria
-                                photo: "http://localhost:8080/images/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
-                                displayName: Maria Rossi
-                                description: A passionate software developer
-                                createdAt: "2025-01-01T12:00:00Z"
                 "400":
                     $ref: "#/components/responses/BadRequest"
                 "500":
                     $ref: "#/components/responses/InternalServerError"
 
-    /users/{userId}:
+    /users/{username}:
         get:
             operationId: getUserProfile
             summary: Retrieves a user's profile
@@ -137,21 +117,16 @@ paths:
             tags:
                 - users
             parameters:
-                - $ref: "#/components/parameters/userId"
+                - $ref: "#/components/parameters/username"
+            security:
+                - BearerAuth: []
             responses:
                 "200":
                     description: Successful response with user profile
                     content:
                         application/json:
                             schema:
-                                $ref: "#/components/schemas/User"
-                            example:
-                                userId: "550e8400-e29b-41d4-a716-446655440000"
-                                username: Maria
-                                photo: "http://localhost:8080/images/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
-                                displayName: Maria Rossi
-                                description: A passionate software developer
-                                createdAt: "2025-01-01T12:00:00Z"
+                                $ref: "#/components/schemas/UserWithoutId"
                 "400":
                     $ref: "#/components/responses/BadRequest"
                 "401":
@@ -211,13 +186,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/User"
-                            example:
-                                userId: "550e8400-e29b-41d4-a716-446655440000"
-                                username: Maria
-                                photo: "http://localhost:8080/images/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
-                                displayName: Maria Rossi
-                                description: A passionate software developer
-                                createdAt: "2025-01-01T12:00:00Z"
                 "400":
                     $ref: "#/components/responses/BadRequest"
                 "401":
@@ -254,13 +222,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/User"
-                            example:
-                                userId: "550e8400-e29b-41d4-a716-446655440000"
-                                username: Maria
-                                photo: "http://localhost:8080/images/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
-                                displayName: Maria Rossi
-                                description: A passionate software developer
-                                createdAt: "2025-01-01T12:00:00Z"
                 "400":
                     $ref: "#/components/responses/BadRequest"
                 "401":
@@ -297,13 +258,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/User"
-                            example:
-                                userId: "550e8400-e29b-41d4-a716-446655440000"
-                                username: Maria
-                                photo: "http://localhost:8080/images/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
-                                displayName: Maria Rossi
-                                description: A passionate software developer
-                                createdAt: "2025-01-01T12:00:00Z"
                 "400":
                     $ref: "#/components/responses/BadRequest"
                 "401":
@@ -340,13 +294,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/User"
-                            example:
-                                userId: "550e8400-e29b-41d4-a716-446655440000"
-                                username: Maria
-                                photo: "http://localhost:8080/images/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
-                                displayName: Maria Rossi
-                                description: A passionate software developer
-                                createdAt: "2025-01-01T12:00:00Z"
                 "400":
                     $ref: "#/components/responses/BadRequest"
                 "401":
@@ -354,35 +301,120 @@ paths:
                 "500":
                     $ref: "#/components/responses/InternalServerError"
 
+    /blocked:
+        get:
+            operationId: getBlockedUsers
+            summary: Retrieves a list of blocked users
+            description: |-
+                This endpoint retrieves a list of blocked users.
+                The user must be authenticated to perform this action.
+            tags:
+                - users
+            parameters:
+                - $ref: "#/components/parameters/cursor"
+                - $ref: "#/components/parameters/limit"
+            security:
+                - BearerAuth: []
+            responses:
+                "200":
+                    description: Successful response with a list of blocked users
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                description: A list of blocked users
+                                properties:
+                                    blocked:
+                                        type: array
+                                        minItems: 0
+                                        maxItems: 100
+                                        description: A list of blocked users
+                                        items:
+                                            $ref: "#/components/schemas/UserWithoutIdSummary"
+                                    nextCursor:
+                                        $ref: "#/components/schemas/Cursor"
+                                required:
+                                    - blocked
+                            example:
+                                blocked:
+                                    - username: Maria
+                                      photo: "http://localhost:8080/images/profile-pictures/Maria.jpg"
+                                      displayName: Maria Rossi
+                                nextCursor: "abc123XYZ"
+                "400":
+                    $ref: "#/components/responses/BadRequest"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "500":
+                    $ref: "#/components/responses/InternalServerError"
+        post:
+            operationId: blockUser
+            summary: Blocks a user
+            description: |-
+                This endpoint blocks a user.
+                The user must be authenticated to perform this action.
+            tags:
+                - users
+            requestBody:
+                description: User to block
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            description: User to block
+                            properties:
+                                username:
+                                    $ref: "#/components/schemas/Username"
+                            required:
+                                - username
+            security:
+                - BearerAuth: []
+            responses:
+                "201":
+                    description: User blocked successfully
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/UserWithoutId"
+                "400":
+                    $ref: "#/components/responses/BadRequest"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "500":
+                    $ref: "#/components/responses/InternalServerError"
+
+    /blocked/{username}:
+        delete:
+            operationId: unblockUser
+            summary: Unblocks a user
+            description: |-
+                This endpoint unblocks a user.
+                The user must be authenticated to perform this action.
+            tags:
+                - users
+            parameters:
+                - $ref: "#/components/parameters/username"
+            security:
+                - BearerAuth: []
+            responses:
+                "200":
+                    description: User unblocked successfully
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/UserWithoutId"
+                "400":
+                    $ref: "#/components/responses/BadRequest"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "404":
+                    $ref: "#/components/responses/NotFound"
+                "500":
+                    $ref: "#/components/responses/InternalServerError"
+
 components:
     schemas:
-        User:
-            type: object
-            description: Represents a user in the system
-            properties:
-                userId:
-                    $ref: "#/components/schemas/UserId"
-                username:
-                    $ref: "#/components/schemas/Username"
-                photo:
-                    $ref: "#/components/schemas/Photo"
-                displayName:
-                    $ref: "#/components/schemas/DisplayName"
-                description:
-                    $ref: "#/components/schemas/Description"
-                createdAt:
-                    type: string
-                    format: date-time
-                    minLength: 20
-                    maxLength: 20
-                    example: "2025-01-01T12:00:00Z"
-                    description: The date and time when the user account was created
-            required:
-                - userId
-                - username
-                - displayName
-                - createdAt
-
         UserId:
             type: string
             format: uuid
@@ -402,16 +434,16 @@ components:
 
         Photo:
             type: string
-            minLength: 83
-            maxLength: 87
-            pattern: "^http://(localhost|127\\.0\\.0\\.1):[0-9]{1,5}/images/profile-pictures/[0-9a-fA-F\\-]{36}\\.jpg$"
-            example: "http://localhost:8080/images/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
+            minLength: 54
+            maxLength: 71
+            pattern: "^http://(localhost|127\\.0\\.0\\.1):[0-9]{1,5}/images/profile-pictures/[a-zA-Z0-9._-]{3,16}\\.jpg$"
+            example: "http://localhost:8080/images/profile-pictures/Maria.jpg"
             description: URL to the user's profile picture
 
         DisplayName:
             type: string
             minLength: 1
-            maxLength: 32
+            maxLength: 50
             pattern: "^.*$"
             example: Maria Rossi
             description: User's display name
@@ -419,10 +451,68 @@ components:
         Description:
             type: string
             minLength: 0
-            maxLength: 128
+            maxLength: 100
             pattern: "^.*$"
             example: A passionate software developer
             description: A short description of the user
+
+        UserWithoutIdSummary:
+            type: object
+            description: Represents a user summary in the system
+            properties:
+                username:
+                    $ref: "#/components/schemas/Username"
+                photo:
+                    $ref: "#/components/schemas/Photo"
+                displayName:
+                    $ref: "#/components/schemas/DisplayName"
+            required:
+                - username
+                - displayName
+            example:
+                username: Maria
+                photo: "http://localhost:8080/images/profile-pictures/Maria.jpg"
+                displayName: Maria Rossi
+
+        UserWithoutId:
+            allOf:
+                - $ref: "#/components/schemas/UserWithoutIdSummary"
+                - type: object
+                  properties:
+                      description:
+                          $ref: "#/components/schemas/Description"
+                      createdAt:
+                          type: string
+                          format: date-time
+                          minLength: 20
+                          maxLength: 20
+                          example: "2025-01-01T12:00:00Z"
+                          description: The date and time when the user account was created
+                  required:
+                      - createdAt
+            example:
+                username: Maria
+                photo: "http://localhost:8080/images/profile-pictures/Maria.jpg"
+                displayName: Maria Rossi
+                description: A passionate software developer
+                createdAt: "2025-01-01T12:00:00Z"
+
+        User:
+            allOf:
+                - $ref: "#/components/schemas/UserWithoutId"
+                - type: object
+                  properties:
+                      userId:
+                          $ref: "#/components/schemas/UserId"
+                  required:
+                      - userId
+            example:
+                userId: "550e8400-e29b-41d4-a716-446655440000"
+                username: Maria
+                photo: "http://localhost:8080/images/profile-pictures/Maria.jpg"
+                displayName: Maria Rossi
+                description: A passionate software developer
+                createdAt: "2025-01-01T12:00:00Z"
 
         Cursor:
             type: string
@@ -446,7 +536,7 @@ components:
                 message:
                     type: string
                     minLength: 1
-                    maxLength: 256
+                    maxLength: 250
                     pattern: "^.*$"
                     example: User not found
                     description: A human-readable message providing more details about the error
@@ -455,13 +545,13 @@ components:
                 - message
 
     parameters:
-        userId:
-            name: userId
+        username:
+            name: username
             in: path
             required: true
-            description: Unique identifier for the user
+            description: Unique username of the user
             schema:
-                $ref: "#/components/schemas/UserId"
+                $ref: "#/components/schemas/Username"
 
         cursor:
             name: cursor
@@ -479,8 +569,8 @@ components:
             schema:
                 type: integer
                 minimum: 1
-                maximum: 128
-                default: 32
+                maximum: 100
+                default: 50
                 description: Maximum number of items to return
 
     securitySchemes:
