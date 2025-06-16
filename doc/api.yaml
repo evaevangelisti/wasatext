@@ -817,8 +817,8 @@ components:
 
     ProfilePicture:
       type: string
-      minLength: 56
-      maxLength: 90
+      minLength: 11
+      maxLength: 255
       pattern: "^http://(localhost|127\\.0\\.0\\.1):[0-9]{1,5}/uploads/profile-pictures/(default|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\\.(jpg|jpeg|png|gif|webp|bmp|svg)$"
       description: URL of the user's profile picture
 
@@ -903,8 +903,8 @@ components:
 
     GroupPhoto:
       type: string
-      minLength: 52
-      maxLength: 86
+      minLength: 11
+      maxLength: 255
       pattern: "^http://(localhost|127\\.0\\.0\\.1):[0-9]{1,5}/uploads/group-photos/(default|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\\.(jpg|jpeg|png|gif|webp|bmp|svg)$"
       description: URL of the group photo
 
@@ -982,8 +982,8 @@ components:
 
     Attachment:
       type: string
-      minLength: 80
-      maxLength: 85
+      minLength: 11
+      maxLength: 255
       pattern: "^http://(localhost|127\\.0\\.0\\.1):[0-9]{1,5}/uploads/attachments/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.(jpg|jpeg|png|gif|webp|bmp|svg)$"
       description: URL of the attachment
 
@@ -1045,8 +1045,8 @@ components:
     Emoji:
       type: string
       minLength: 1
-      maxLength: 16
-      pattern: "^[\u0000-\uFFFF]{1,16}$"
+      maxLength: 10
+      pattern: "^[\u1F600-\u1F64F\u1F300-\u1F5FF\u1F680-\u1F6FF\u2600-\u26FF\u2700-\u27BF]+$"
       description: Emoji used in the comment
 
     Comment:

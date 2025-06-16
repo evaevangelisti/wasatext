@@ -13,7 +13,7 @@ import (
 
 type WebAPIConfig struct {
 	Config struct {
-		FilePath string `conf:"default:/conf/config.yaml"`
+		FilePath string `conf:"default:./conf/config.yaml"`
 	}
 
 	Web struct {
@@ -25,7 +25,8 @@ type WebAPIConfig struct {
 	}
 
 	Database struct {
-		FilePath string `conf:"default:/tmp/.db"`
+		FilePath       string `conf:"default:./tmp/wasatext.db"`
+		MigrationsPath string `conf:"default:./service/database/migrations"`
 	}
 
 	Debug bool

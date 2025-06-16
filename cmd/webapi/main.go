@@ -1,5 +1,3 @@
-//go:build webui
-
 /*
 This package sets up a web server that serves APIs defined in the `service/api` package.
 It connects to necessary external resources, such as a database, and starts two web servers: one for the API and another for debugging purposes.
@@ -30,12 +28,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io/fs"
 	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/ardanlabs/conf"
@@ -43,7 +39,6 @@ import (
 	"github.com/evaevangelisti/wasatext/service/config"
 	"github.com/evaevangelisti/wasatext/service/database"
 	"github.com/evaevangelisti/wasatext/service/utils/globaltime"
-	"github.com/evaevangelisti/wasatext/webui"
 	"github.com/gorilla/handlers"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
@@ -93,7 +88,7 @@ func run() error {
 		db.Close()
 	}()
 
-	appDatabase, err := database.New(db)
+	appDatabase, err := database.New(db, config.Database.MigrationsPath)
 
 	if err != nil {
 		logger.WithError(err).Error("failed to create AppDatabase instance")
@@ -119,21 +114,12 @@ func run() error {
 
 	handler := router.Handler()
 
-	distDirectory, err := fs.Sub(webui.Dist, "dist")
+	handler, err = setupWebUI(handler)
 
 	if err != nil {
 		logger.WithError(err).Error("failed to embed WebUI dist/ directory")
 		return fmt.Errorf("embedding WebUI dist/ directory: %w", err)
 	}
-
-	handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.RequestURI, "/dashboard/") {
-			http.StripPrefix("/dashboard/", http.FileServer(http.FS(distDirectory))).ServeHTTP(w, r)
-			return
-		}
-
-		handler.ServeHTTP(w, r)
-	})
 
 	handler = handlers.CORS(
 		handlers.AllowedHeaders([]string{

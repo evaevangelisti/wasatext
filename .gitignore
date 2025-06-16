@@ -1,3 +1,7 @@
+/tmp/
+
+.DS_Store
+
 .spectral.js
 .golangci.yaml
 webui/eslint.config.mjs
