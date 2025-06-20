@@ -101,15 +101,6 @@ paths:
               examples:
                 userExample:
                   $ref: "#/components/examples/userExample"
-        "201":
-          description: User created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-              examples:
-                userExample:
-                  $ref: "#/components/examples/userExample"
         "400":
           $ref: "#/components/responses/BadRequest"
         "500":
@@ -620,7 +611,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError"
 
-  /groups/{conversationId}/members/{userId}:
+  /groups/{conversationId}/members/me:
     delete:
       operationId: leaveGroup
       summary: Leave group
@@ -629,7 +620,6 @@ paths:
         - conversations
       parameters:
         - $ref: "#/components/parameters/conversationId"
-        - $ref: "#/components/parameters/userId"
       security:
         - BearerAuth: []
       responses:
@@ -835,7 +825,6 @@ components:
       required:
         - userId
         - username
-        - profilePicture
 
     User:
       allOf:
@@ -1055,6 +1044,8 @@ components:
       properties:
         commentId:
           $ref: "#/components/schemas/Id"
+        commenter:
+          $ref: "#/components/schemas/UserPreview"
         emoji:
           $ref: "#/components/schemas/Emoji"
         commentedAt:

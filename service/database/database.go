@@ -11,6 +11,10 @@ import (
 )
 
 type Database interface {
+	Query(query string, args ...interface{}) (*sql.Rows, error)
+	QueryRow(query string, args ...interface{}) *sql.Row
+	Begin() (*sql.Tx, error)
+	Exec(query string, args ...interface{}) (sql.Result, error)
 	Ping() error
 	Close() error
 }
@@ -63,6 +67,22 @@ func New(db *sql.DB, migrationsPath string) (Database, error) {
 	return &databaseImpl{
 		connection: db,
 	}, nil
+}
+
+func (db *databaseImpl) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	return db.connection.Query(query, args...)
+}
+
+func (db *databaseImpl) QueryRow(query string, args ...interface{}) *sql.Row {
+	return db.connection.QueryRow(query, args...)
+}
+
+func (db *databaseImpl) Begin() (*sql.Tx, error) {
+	return db.connection.Begin()
+}
+
+func (db *databaseImpl) Exec(query string, args ...interface{}) (sql.Result, error) {
+	return db.connection.Exec(query, args...)
 }
 
 func (db *databaseImpl) Ping() error {

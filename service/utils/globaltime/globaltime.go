@@ -15,3 +15,15 @@ func Now() time.Time {
 func Since(startTime time.Time) time.Duration {
 	return Now().Sub(startTime)
 }
+
+func Parse(t string) (time.Time, error) {
+	return time.Parse(time.RFC3339, t)
+}
+
+func Format(t time.Time) (string, error) {
+	if t.IsZero() {
+		return "", nil
+	}
+
+	return t.Format(time.RFC3339), nil
+}

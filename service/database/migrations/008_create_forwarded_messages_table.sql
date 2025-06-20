@@ -1,9 +1,9 @@
 CREATE TABLE IF NOT EXISTS forwarded_messages (
-    forward_id TEXT PRIMARY KEY CHECK (
-        forward_id LIKE '________-____-____-____-____________'
+    forwarded_message_id TEXT PRIMARY KEY CHECK (
+        forwarded_message_id LIKE '________-____-____-____-____________'
     ),
     forwarded_at TEXT NOT NULL CHECK (forwarded_at LIKE "____-__-__T__:__:__Z"),
-    message_id TEXT NOT NULL CHECK (
+    original_message_id TEXT NOT NULL CHECK (
         message_id LIKE '________-____-____-____-____________'
     ),
     conversation_id TEXT NOT NULL CHECK (

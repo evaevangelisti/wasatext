@@ -10,5 +10,9 @@ CREATE TABLE IF NOT EXISTS comments (
     message_id TEXT NOT NULL CHECK (
         message_id LIKE '________-____-____-____-____________'
     ),
-    FOREIGN KEY (message_id) REFERENCES messages (message_id) ON DELETE CASCADE
+    user_id TEXT NOT NULL CHECK (
+        message_id LIKE '________-____-____-____-____________'
+    ),
+    FOREIGN KEY (message_id) REFERENCES messages (message_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 );
