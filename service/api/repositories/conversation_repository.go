@@ -54,6 +54,10 @@ func (repository *ConversationRepository) GetConversationsByUserID(userID uuid.U
 		conversations = append(conversations, conversation)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, errors.ErrInternal
+	}
+
 	return conversations, nil
 }
 
@@ -193,6 +197,10 @@ func (repository *ConversationRepository) GetParticipants(conversationID uuid.UU
 		participants = append(participants, participant)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, errors.ErrInternal
+	}
+
 	return participants, nil
 }
 
@@ -220,6 +228,10 @@ func (repository *ConversationRepository) GetMembers(conversationID uuid.UUID) (
 		}
 
 		members = append(members, member)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, errors.ErrInternal
 	}
 
 	return members, nil
@@ -264,7 +276,9 @@ func (repository *ConversationRepository) CreatePrivateConversation(participantI
 		return uuid.Nil, errors.ErrInternal
 	}
 
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	_, err = tx.Exec("INSERT INTO conversations (conversation_id, type, created_at) VALUES (?, ?, ?)", conversationID.String(), "private", createdAtStr)
 	if err != nil {
@@ -304,7 +318,9 @@ func (repository *ConversationRepository) CreateGroupConversation(name string, m
 		return uuid.Nil, errors.ErrInternal
 	}
 
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	_, err = tx.Exec("INSERT INTO conversations (conversation_id, type, created_at) VALUES (?, ?, ?)", conversationID.String(), "group", createdAtStr)
 	if err != nil {

@@ -40,7 +40,10 @@ func (handler *ConversationHandler) GetConversations(w http.ResponseWriter, r *h
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(conversations)
+
+	if err = json.NewEncoder(w).Encode(conversations); err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal)
+	}
 }
 
 func (handler *ConversationHandler) GetConversation(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -77,7 +80,10 @@ func (handler *ConversationHandler) GetConversation(w http.ResponseWriter, r *ht
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(conversation)
+
+	if err = json.NewEncoder(w).Encode(conversation); err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal)
+	}
 }
 
 type CreateConversationRequest struct {
@@ -102,7 +108,7 @@ func (handler *ConversationHandler) CreateConversation(w http.ResponseWriter, r 
 
 	switch request.Type {
 	case "private":
-		conversation, err := handler.Service.CreatePrivateConversation(request.UserIDs)
+		privateConversation, err := handler.Service.CreatePrivateConversation(request.UserIDs)
 		if err != nil {
 			errors.WriteHTTPError(w, err)
 			return
@@ -110,9 +116,12 @@ func (handler *ConversationHandler) CreateConversation(w http.ResponseWriter, r 
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(conversation)
+
+		if err = json.NewEncoder(w).Encode(privateConversation); err != nil {
+			errors.WriteHTTPError(w, errors.ErrInternal)
+		}
 	case "group":
-		conversation, err := handler.Service.CreateGroupConversation(request.Name, request.UserIDs)
+		groupConversation, err := handler.Service.CreateGroupConversation(request.Name, request.UserIDs)
 		if err != nil {
 			errors.WriteHTTPError(w, err)
 			return
@@ -120,7 +129,10 @@ func (handler *ConversationHandler) CreateConversation(w http.ResponseWriter, r 
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(conversation)
+
+		if err = json.NewEncoder(w).Encode(groupConversation); err != nil {
+			errors.WriteHTTPError(w, errors.ErrInternal)
+		}
 	default:
 		errors.WriteHTTPError(w, errors.ErrBadRequest)
 	}
@@ -171,7 +183,10 @@ func (handler *ConversationHandler) AddToGroup(w http.ResponseWriter, r *http.Re
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(groupConversation)
+
+	if err = json.NewEncoder(w).Encode(groupConversation); err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal)
+	}
 }
 
 type SetGroupNameRequest struct {
@@ -219,7 +234,10 @@ func (handler *ConversationHandler) SetGroupName(w http.ResponseWriter, r *http.
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(groupConversation)
+
+	if err = json.NewEncoder(w).Encode(groupConversation); err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal)
+	}
 }
 
 func (handler *ConversationHandler) SetGroupPhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -243,7 +261,10 @@ func (handler *ConversationHandler) SetGroupPhoto(w http.ResponseWriter, r *http
 		return
 	}
 
-	r.ParseMultipartForm(5 << 20)
+	if err := r.ParseMultipartForm(5 << 20); err != nil {
+		errors.WriteHTTPError(w, errors.ErrBadRequest)
+		return
+	}
 
 	var photo string
 
@@ -258,7 +279,11 @@ func (handler *ConversationHandler) SetGroupPhoto(w http.ResponseWriter, r *http
 		}
 
 		dstDir := "./uploads/group-photos"
-		os.MkdirAll(dstDir, 0755)
+		if err := os.MkdirAll(dstDir, 0755); err != nil {
+			errors.WriteHTTPError(w, errors.ErrInternal)
+			return
+		}
+
 		dstFilename := uuid.New().String() + ext
 		dstPath := filepath.Join(dstDir, dstFilename)
 
@@ -286,7 +311,10 @@ func (handler *ConversationHandler) SetGroupPhoto(w http.ResponseWriter, r *http
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(groupConversation)
+
+	if err = json.NewEncoder(w).Encode(groupConversation); err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal)
+	}
 }
 
 func (handler *ConversationHandler) LeaveGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {

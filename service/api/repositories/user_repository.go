@@ -42,6 +42,10 @@ func (repository *UserRepository) GetUsers(q string, authenticatedUserID uuid.UU
 		users = append(users, user)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, errors.ErrInternal
+	}
+
 	return users, nil
 }
 

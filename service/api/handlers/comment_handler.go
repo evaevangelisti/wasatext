@@ -61,7 +61,10 @@ func (handler *CommentHandler) CommentMessage(w http.ResponseWriter, r *http.Req
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(comment)
+
+	if err = json.NewEncoder(w).Encode(comment); err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal)
+	}
 }
 
 func (handler *CommentHandler) UncommentMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {

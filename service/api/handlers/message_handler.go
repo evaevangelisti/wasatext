@@ -44,7 +44,10 @@ func (handler *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	r.ParseMultipartForm(5 << 20)
+	if err := r.ParseMultipartForm(5 << 20); err != nil {
+		errors.WriteHTTPError(w, errors.ErrBadRequest)
+		return
+	}
 
 	content := r.FormValue("content")
 
@@ -69,7 +72,11 @@ func (handler *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Reques
 		}
 
 		dstDir := "./uploads/attachments"
-		os.MkdirAll(dstDir, 0755)
+		if err := os.MkdirAll(dstDir, 0755); err != nil {
+			errors.WriteHTTPError(w, errors.ErrInternal)
+			return
+		}
+
 		dstFilename := uuid.New().String() + ext
 		dstPath := filepath.Join(dstDir, dstFilename)
 
@@ -97,7 +104,10 @@ func (handler *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(message)
+
+	if err = json.NewEncoder(w).Encode(message); err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal)
+	}
 }
 
 type ForwardMessageRequest struct {
@@ -137,7 +147,7 @@ func (handler *MessageHandler) ForwardMessage(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	message, err := handler.Service.CreateForwardedMessage(cid, auid, request.MessageID)
+	forwardedMessage, err := handler.Service.CreateForwardedMessage(cid, auid, request.MessageID)
 	if err != nil {
 		errors.WriteHTTPError(w, err)
 		return
@@ -145,7 +155,10 @@ func (handler *MessageHandler) ForwardMessage(w http.ResponseWriter, r *http.Req
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(message)
+
+	if err = json.NewEncoder(w).Encode(forwardedMessage); err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal)
+	}
 }
 
 type EditMessageRequest struct {
@@ -185,7 +198,7 @@ func (handler *MessageHandler) EditMessage(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	message, err := handler.Service.UpdateMessage(mid, auid, request.Content)
+	updatedMessage, err := handler.Service.UpdateMessage(mid, auid, request.Content)
 	if err != nil {
 		errors.WriteHTTPError(w, err)
 		return
@@ -193,7 +206,10 @@ func (handler *MessageHandler) EditMessage(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(message)
+
+	if err = json.NewEncoder(w).Encode(updatedMessage); err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal)
+	}
 }
 
 func (handler *MessageHandler) DeleteMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {

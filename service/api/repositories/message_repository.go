@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"database/sql"
+	stdErrors "errors"
 	"time"
 
 	"github.com/evaevangelisti/wasatext/service/api/models"
@@ -38,6 +39,10 @@ func (repository *MessageRepository) GetMessagesByConversationID(conversationID 
 		}
 
 		messages = append(messages, *message)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, errors.ErrInternal
 	}
 
 	return messages, nil
@@ -93,7 +98,7 @@ func (repository *MessageRepository) GetMessageByID(messageID uuid.UUID) (*model
 		if err != nil {
 			return nil, errors.ErrInternal
 		}
-	} else if err != sql.ErrNoRows {
+	} else if stdErrors.Is(err, sql.ErrNoRows) {
 		return nil, errors.ErrInternal
 	} else {
 		message.IsForwarded = false
@@ -118,6 +123,10 @@ func (repository *MessageRepository) GetMessageByID(messageID uuid.UUID) (*model
 		if readAt != "" {
 			message.Trackings.Read[userID] = readAt
 		}
+	}
+
+	if err := trackingRows.Err(); err != nil {
+		return nil, errors.ErrInternal
 	}
 
 	message.SentAt, err = globaltime.Parse(sentAt)
@@ -173,7 +182,9 @@ func (repository *MessageRepository) CreateForwardedMessage(conversationID, user
 		return uuid.Nil, errors.ErrInternal
 	}
 
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	_, err = repository.Database.Exec("INSERT INTO messages (message_id, content, attachment, sent_at, conversation_id, sender_id) VALUES (?, ?, ?, ?, ?, ?)", forwardedMessageID.String(), originalMessage.Content, originalMessage.Attachment, forwardedAtStr, conversationID.String(), userID.String())
 	if err != nil {
@@ -228,7 +239,9 @@ func (repository *MessageRepository) DeleteMessage(messageID uuid.UUID) error {
 		return errors.ErrInternal
 	}
 
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	_, err = tx.Exec("DELETE FROM message_trackings WHERE message_id = ?", messageID.String())
 	if err != nil {

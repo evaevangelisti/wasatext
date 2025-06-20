@@ -1,14 +1,17 @@
 package errors
 
-import "net/http"
+import (
+	"errors"
+	"net/http"
+)
 
 type Error struct {
 	Message    string
 	StatusCode int
 }
 
-func (error *Error) Error() string {
-	return error.Message
+func (e *Error) Error() string {
+	return e.Message
 }
 
 func New(message string, status int) *Error {
@@ -25,7 +28,9 @@ var (
 )
 
 func WriteHTTPError(w http.ResponseWriter, err error) {
-	if customError, ok := err.(*Error); ok {
+	var customError *Error
+
+	if ok := errors.As(err, &customError); ok {
 		http.Error(w, customError.Message, customError.StatusCode)
 	} else {
 		http.Error(w, ErrInternal.Message, ErrInternal.StatusCode)

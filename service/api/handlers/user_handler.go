@@ -42,7 +42,10 @@ func (handler *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request, _ h
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(users)
+
+	if err = json.NewEncoder(w).Encode(users); err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal)
+	}
 }
 
 func (handler *UserHandler) GetUser(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -67,7 +70,10 @@ func (handler *UserHandler) GetUser(w http.ResponseWriter, r *http.Request, ps h
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(user)
+
+	if err = json.NewEncoder(w).Encode(user); err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal)
+	}
 }
 
 type DoLoginRequest struct {
@@ -95,7 +101,10 @@ func (handler *UserHandler) DoLogin(w http.ResponseWriter, r *http.Request, _ ht
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(user)
+
+	if err = json.NewEncoder(w).Encode(user); err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal)
+	}
 }
 
 type SetMyUsernameRequest struct {
@@ -135,7 +144,10 @@ func (handler *UserHandler) SetMyUserName(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(user)
+
+	if err = json.NewEncoder(w).Encode(user); err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal)
+	}
 }
 
 func (handler *UserHandler) SetMyPhoto(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -151,7 +163,10 @@ func (handler *UserHandler) SetMyPhoto(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
-	r.ParseMultipartForm(5 << 20)
+	if err := r.ParseMultipartForm(5 << 20); err != nil {
+		errors.WriteHTTPError(w, errors.ErrBadRequest)
+		return
+	}
 
 	var profilePicture string
 
@@ -166,7 +181,11 @@ func (handler *UserHandler) SetMyPhoto(w http.ResponseWriter, r *http.Request, _
 		}
 
 		dstDir := "./uploads/profile-pictures"
-		os.MkdirAll(dstDir, 0755)
+		if err := os.MkdirAll(dstDir, 0755); err != nil {
+			errors.WriteHTTPError(w, errors.ErrInternal)
+			return
+		}
+
 		dstFilename := uuid.New().String() + ext
 		dstPath := filepath.Join(dstDir, dstFilename)
 
@@ -194,5 +213,8 @@ func (handler *UserHandler) SetMyPhoto(w http.ResponseWriter, r *http.Request, _
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(user)
+
+	if err = json.NewEncoder(w).Encode(user); err != nil {
+		errors.WriteHTTPError(w, errors.ErrInternal)
+	}
 }

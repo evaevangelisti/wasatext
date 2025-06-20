@@ -44,6 +44,10 @@ func (repository *CommentRepository) GetCommentsByMessageID(messageID uuid.UUID)
 		comments = append(comments, comment)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, errors.ErrInternal
+	}
+
 	return comments, nil
 }
 
