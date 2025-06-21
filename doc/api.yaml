@@ -101,6 +101,15 @@ paths:
               examples:
                 userExample:
                   $ref: "#/components/examples/userExample"
+        "201":
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+              examples:
+                userExample:
+                  $ref: "#/components/examples/userExample"
         "400":
           $ref: "#/components/responses/BadRequest"
         "500":
@@ -129,6 +138,8 @@ paths:
                   $ref: "#/components/examples/userExample"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
@@ -237,7 +248,7 @@ paths:
                   conversations:
                     type: array
                     minItems: 0
-                    maxItems: 100
+                    maxItems: 1000
                     description: List of conversations
                     items:
                       allOf:
@@ -257,23 +268,20 @@ paths:
                       - userId: "550e8400-e29b-41d4-a716-446655440000"
                         username: Maria
                         profilePicture: "http://localhost:8080/uploads/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
+                        createdAt: "2023-10-01T12:00:00Z"
                       - userId: "550e8400-e29b-41d4-a716-446655440001"
                         username: John
                         profilePicture: "http://localhost:8080/uploads/profile-pictures/550e8400-e29b-41d4-a716-446655440001.jpg"
+                        createdAt: "2023-10-01T12:00:00Z"
                     lastMessage:
                       messageId: "550e8400-e29b-41d4-a716-446655440000"
-                      content: "Hello, how are you?"
-                      isForwarded: false
                       sender:
                         userId: "550e8400-e29b-41d4-a716-446655440000"
                         username: Maria
                         profilePicture: "http://localhost:8080/uploads/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
-                      status:
-                        delivered:
-                          "550e8400-e29b-41d4-a716-446655440001": "2023-10-01T12:00:00Z"
-                        read:
-                          "550e8400-e29b-41d4-a716-446655440001": "2023-10-01T12:05:00Z"
-                      comments: []
+                        createdAt: "2023-10-01T12:00:00Z"
+                      content: "Hello, how are you?"
+                      isForwarded: false
                       sentAt: "2023-10-01T12:00:00Z"
                     createdAt: "2023-10-01T12:00:00Z"
         "401":
@@ -303,30 +311,20 @@ paths:
                 - type: object
                   description: Private conversation
                   properties:
-                    participants:
-                      type: array
-                      minItems: 2
-                      maxItems: 2
-                      description: List of participants in a private conversation
-                      items:
-                        $ref: "#/components/schemas/Id"
-                  required:
-                    - participants
+                    userId:
+                      $ref: "#/components/schemas/Id"
                 - type: object
                   description: Group conversation
                   properties:
                     name:
                       $ref: "#/components/schemas/Name"
-                    participants:
+                    members:
                       type: array
                       minItems: 1
                       maxItems: 100
                       description: List of group members
                       items:
                         $ref: "#/components/schemas/Id"
-                  required:
-                    - name
-                    - participants
               discriminator:
                 propertyName: type
       security:
@@ -340,11 +338,13 @@ paths:
                 $ref: "#/components/schemas/Conversation"
               examples:
                 conversationExample:
-                  $ref: "#/components/examples/conversationExample"
+                  $ref: "#/components/examples/privateConversationExample"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalServerError"
 
@@ -368,7 +368,9 @@ paths:
                 $ref: "#/components/schemas/Conversation"
               examples:
                 conversationExample:
-                  $ref: "#/components/examples/conversationExample"
+                  $ref: "#/components/examples/privateConversationExample"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -400,8 +402,6 @@ paths:
                   $ref: "#/components/schemas/Content"
                 image:
                   $ref: "#/components/schemas/Image"
-              required:
-                - content
             example:
               content: Hello, how are you?
       security:
@@ -454,7 +454,7 @@ paths:
       security:
         - BearerAuth: []
       responses:
-        "200":
+        "201":
           description: Message forwarded successfully
           content:
             application/json:
@@ -561,6 +561,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalServerError"
 
@@ -596,10 +598,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/User"
+                $ref: "#/components/schemas/GroupConversation"
               examples:
-                userExample:
-                  $ref: "#/components/examples/userExample"
+                groupConversationExample:
+                  $ref: "#/components/examples/groupConversationExample"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -608,6 +610,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalServerError"
 
@@ -629,8 +633,6 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
@@ -680,6 +682,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     delete:
       operationId: deleteMessage
       summary: Delete message
@@ -699,6 +703,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
   /messages/{messageId}/comments:
     post:
@@ -744,6 +750,10 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
   /comments/{commentId}:
     delete:
@@ -767,6 +777,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
 components:
   schemas:
@@ -785,14 +797,14 @@ components:
       type: string
       format: date-time
       minLength: 20
-      maxLength: 20
+      maxLength: 25
       description: Timestamp in RFC 3339 format
 
     Image:
       type: string
       format: binary
       minLength: 1
-      maxLength: 4194304
+      maxLength: 5242880
       description: Binary data for image upload
 
     # --------------------------------------------------------------------------------
@@ -802,17 +814,17 @@ components:
       type: string
       minLength: 3
       maxLength: 16
-      pattern: "^[a-zA-Z0-9._]{3,16}$"
+      pattern: "^.*$"
       description: Unique handle used to identify the user
 
     ProfilePicture:
       type: string
       minLength: 11
       maxLength: 255
-      pattern: "^http://(localhost|127\\.0\\.0\\.1):[0-9]{1,5}/uploads/profile-pictures/(default|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\\.(jpg|jpeg|png|gif|webp|bmp|svg)$"
+      pattern: "^http://(localhost|127\\.0\\.0\\.1):[0-9]{1,5}/uploads/profile-pictures/(default|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\\.(jpg|jpeg|png|webp)$"
       description: URL of the user's profile picture
 
-    UserPreview:
+    User:
       type: object
       description: Preview of user details
       properties:
@@ -822,20 +834,12 @@ components:
           $ref: "#/components/schemas/Username"
         profilePicture:
           $ref: "#/components/schemas/ProfilePicture"
+        createdAt:
+          $ref: "#/components/schemas/Timestamp"
       required:
         - userId
         - username
-
-    User:
-      allOf:
-        - $ref: "#/components/schemas/UserPreview"
-        - type: object
-          description: User details
-          properties:
-            createdAt:
-              $ref: "#/components/schemas/Timestamp"
-          required:
-            - createdAt
+        - createdAt
 
     # --------------------------------------------------------------------------------
     # Conversation
@@ -879,7 +883,7 @@ components:
               maxItems: 2
               description: List of participants in a private conversation
               items:
-                $ref: "#/components/schemas/UserPreview"
+                $ref: "#/components/schemas/User"
           required:
             - participants
 
@@ -894,7 +898,7 @@ components:
       type: string
       minLength: 11
       maxLength: 255
-      pattern: "^http://(localhost|127\\.0\\.0\\.1):[0-9]{1,5}/uploads/group-photos/(default|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\\.(jpg|jpeg|png|gif|webp|bmp|svg)$"
+      pattern: "^http://(localhost|127\\.0\\.0\\.1):[0-9]{1,5}/uploads/group-photos/(default|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\\.(jpg|jpeg|png|webp)$"
       description: URL of the group photo
 
     GroupConversation:
@@ -903,35 +907,20 @@ components:
         - type: object
           description: Group conversation details
           properties:
-            groupDetails:
-              type: object
-              description: Group details
-              properties:
-                name:
-                  $ref: "#/components/schemas/Name"
-                photo:
-                  $ref: "#/components/schemas/GroupPhoto"
-              required:
-                - name
-                - photo
-            participants:
+            name:
+              $ref: "#/components/schemas/Name"
+            photo:
+              $ref: "#/components/schemas/GroupPhoto"
+            members:
               type: array
               minItems: 1
               maxItems: 100
               description: List of group members
               items:
-                allOf:
-                  - $ref: "#/components/schemas/UserPreview"
-                  - type: object
-                    description: Participant details
-                    properties:
-                      joinedAt:
-                        $ref: "#/components/schemas/Timestamp"
-                    required:
-                      - joinedAt
+                $ref: "#/components/schemas/User"
           required:
-            - groupDetails
-            - participants
+            - name
+            - members
 
     ConversationWithoutMessages:
       oneOf:
@@ -952,12 +941,10 @@ components:
             messages:
               type: array
               minItems: 0
-              maxItems: 1000
+              maxItems: 10000
               description: List of messages in the conversation
               items:
                 $ref: "#/components/schemas/Message"
-          required:
-            - messages
 
     # --------------------------------------------------------------------------------
     # Message
@@ -973,7 +960,7 @@ components:
       type: string
       minLength: 11
       maxLength: 255
-      pattern: "^http://(localhost|127\\.0\\.0\\.1):[0-9]{1,5}/uploads/attachments/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.(jpg|jpeg|png|gif|webp|bmp|svg)$"
+      pattern: "^http://(localhost|127\\.0\\.0\\.1):[0-9]{1,5}/uploads/attachments/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.(jpg|jpeg|png|webp)$"
       description: URL of the attachment
 
     Message:
@@ -982,32 +969,12 @@ components:
       properties:
         messageId:
           $ref: "#/components/schemas/Id"
+        sender:
+          $ref: "#/components/schemas/User"
         content:
           $ref: "#/components/schemas/Content"
         attachment:
           $ref: "#/components/schemas/Attachment"
-        isForwarded:
-          type: boolean
-          description: Indicates if the message is forwarded
-        sender:
-          $ref: "#/components/schemas/UserPreview"
-        status:
-          type: object
-          description: Message status
-          properties:
-            delivered:
-              type: object
-              description: Delivery status of the message
-              additionalProperties:
-                $ref: "#/components/schemas/Timestamp"
-            read:
-              type: object
-              description: Read status of the message
-              additionalProperties:
-                $ref: "#/components/schemas/Timestamp"
-          required:
-            - delivered
-            - read
         comments:
           type: array
           minItems: 0
@@ -1015,17 +982,28 @@ components:
           description: List of comments on the message
           items:
             $ref: "#/components/schemas/Comment"
+        isForwarded:
+          type: boolean
+          description: Indicates if the message is forwarded
+        originalMessageId:
+          $ref: "#/components/schemas/Id"
+        trackings:
+          type: object
+          description: Message trackings
+          properties:
+            read:
+              type: object
+              description: Read status of the message
+              additionalProperties:
+                $ref: "#/components/schemas/Timestamp"
         sentAt:
           $ref: "#/components/schemas/Timestamp"
         editedAt:
           $ref: "#/components/schemas/Timestamp"
       required:
         - messageId
-        - content
-        - isForwarded
         - sender
-        - status
-        - comments
+        - isForwarded
         - sentAt
 
     # --------------------------------------------------------------------------------
@@ -1034,8 +1012,8 @@ components:
     Emoji:
       type: string
       minLength: 1
-      maxLength: 10
-      pattern: "^[\u1F600-\u1F64F\u1F300-\u1F5FF\u1F680-\u1F6FF\u2600-\u26FF\u2700-\u27BF]+$"
+      maxLength: 16
+      pattern: "^[\u0000-\uFFFF]{1,16}$"
       description: Emoji used in the comment
 
     Comment:
@@ -1045,13 +1023,14 @@ components:
         commentId:
           $ref: "#/components/schemas/Id"
         commenter:
-          $ref: "#/components/schemas/UserPreview"
+          $ref: "#/components/schemas/User"
         emoji:
           $ref: "#/components/schemas/Emoji"
         commentedAt:
           $ref: "#/components/schemas/Timestamp"
       required:
         - commentId
+        - commenter
         - emoji
         - commentedAt
 
@@ -1062,12 +1041,6 @@ components:
       type: object
       description: Error details
       properties:
-        code:
-          type: string
-          minLength: 7
-          maxLength: 7
-          pattern: "^ERR-[0-9]{3}$"
-          description: Machine-readable error code
         message:
           type: string
           minLength: 1
@@ -1075,7 +1048,6 @@ components:
           pattern: "^.*$"
           description: Brief description of the error
       required:
-        - code
         - message
 
   responses:
@@ -1086,7 +1058,6 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
           example:
-            code: "ERR-400"
             message: Bad request
 
     Unauthorized:
@@ -1096,7 +1067,6 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
           example:
-            code: "ERR-401"
             message: Unauthorized access
 
     Forbidden:
@@ -1106,7 +1076,6 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
           example:
-            code: "ERR-403"
             message: Forbidden access
 
     NotFound:
@@ -1116,7 +1085,6 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
           example:
-            code: "ERR-404"
             message: Resource not found
 
     Conflict:
@@ -1126,7 +1094,6 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
           example:
-            code: "ERR-409"
             message: Conflict error
 
     InternalServerError:
@@ -1136,7 +1103,6 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
           example:
-            code: "ERR-500"
             message: Internal server error
 
   examples:
@@ -1148,8 +1114,8 @@ components:
         profilePicture: "http://localhost:8080/uploads/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
         createdAt: "2023-10-01T12:00:00Z"
 
-    conversationExample:
-      summary: Example conversation
+    privateConversationExample:
+      summary: Example private conversation
       value:
         conversationId: "550e8400-e29b-41d4-a716-446655440000"
         type: private
@@ -1157,10 +1123,11 @@ components:
           - userId: "550e8400-e29b-41d4-a716-446655440000"
             username: Maria
             profilePicture: "http://localhost:8080/uploads/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
+            createdAt: "2023-10-01T12:00:00Z"
           - userId: "550e8400-e29b-41d4-a716-446655440001"
             username: John
             profilePicture: "http://localhost:8080/uploads/profile-pictures/550e8400-e29b-41d4-a716-446655440001.jpg"
-        messages: []
+            createdAt: "2023-10-01T12:00:00Z"
         createdAt: "2023-10-01T12:00:00Z"
 
     groupConversationExample:
@@ -1168,18 +1135,17 @@ components:
       value:
         conversationId: "550e8400-e29b-41d4-a716-446655440000"
         type: group
-        groupDetails:
-          name: Friends Chat
-          photo: "http://localhost:8080/uploads/group-photos/550e8400-e29b-41d4-a716-446655440000.jpg"
-        participants:
+        name: Friends Chat
+        photo: "http://localhost:8080/uploads/group-photos/550e8400-e29b-41d4-a716-446655440000.jpg"
+        members:
           - userId: "550e8400-e29b-41d4-a716-446655440000"
             username: Maria
             profilePicture: "http://localhost:8080/uploads/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
-            joinedAt: "2023-10-01T12:00:00Z"
+            createdAt: "2023-10-01T12:00:00Z"
           - userId: "550e8400-e29b-41d4-a716-446655440001"
             username: John
             profilePicture: "http://localhost:8080/uploads/profile-pictures/550e8400-e29b-41d4-a716-446655440001.jpg"
-            joinedAt: "2023-10-01T12:00:00Z"
+            createdAt: "2023-10-01T12:00:00Z"
         createdAt: "2023-10-01T12:00:00Z"
 
     messageExample:
@@ -1191,19 +1157,17 @@ components:
         sender:
           userId: "550e8400-e29b-41d4-a716-446655440000"
           username: Maria
-          profilePicture: "http://localhost:8080/uploads/profile-pictures/550e8400-e29b-41d4-a716-446655440000.jpg"
-        status:
-          delivered:
-            "550e8400-e29b-41d4-a716-446655440000": "2023-10-01T12:00:00Z"
-          read:
-            "550e8400-e29b-41d4-a716-446655440000": "2023-10-01T12:05:00Z"
-        comments: []
+          createdAt: "2023-10-01T12:00:00Z"
         sentAt: "2023-10-01T12:00:00Z"
 
     commentExample:
       summary: Example comment
       value:
         commentId: "550e8400-e29b-41d4-a716-446655440000"
+        commenter:
+          userId: "550e8400-e29b-41d4-a716-446655440000"
+          username: Maria
+          createdAt: "2023-10-01T12:00:00Z"
         emoji: "😀"
         commentedAt: "2023-10-01T12:10:00Z"
 

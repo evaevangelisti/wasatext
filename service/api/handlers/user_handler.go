@@ -21,6 +21,10 @@ type UserHandler struct {
 	Service *services.UserService
 }
 
+type GetUsersQuery struct {
+	Q string `validate:"omitempty,min=1,max=16"`
+}
+
 func (handler *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	authenticatedUserID, ok := middlewares.GetUserIDFromContext(r.Context())
 	if !ok {
@@ -34,9 +38,15 @@ func (handler *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request, _ h
 		return
 	}
 
-	q := r.URL.Query().Get("q")
+	query := GetUsersQuery{Q: r.URL.Query().Get("q")}
 
-	users, err := handler.Service.GetUsers(q, auid)
+	validate := validator.New()
+	if err := validate.Struct(query); err != nil {
+		errors.WriteHTTPError(w, errors.ErrBadRequest)
+		return
+	}
+
+	users, err := handler.Service.GetUsers(query.Q, auid)
 	if err != nil {
 		errors.WriteHTTPError(w, err)
 		return

@@ -230,7 +230,7 @@ func (service *ConversationService) RemoveMember(conversationID, userID uuid.UUI
 	}
 
 	if !hasAccess {
-		return errors.ErrNotFound
+		return errors.ErrForbidden
 	}
 
 	err = service.Repository.RemoveMember(conversationID, userID)

@@ -20,12 +20,12 @@ func New(message string, status int) *Error {
 }
 
 var (
-	ErrBadRequest   = New("bad request", http.StatusBadRequest)
-	ErrUnauthorized = New("unauthorized", http.StatusUnauthorized)
-	ErrForbidden    = New("forbidden", http.StatusForbidden)
-	ErrNotFound     = New("not found", http.StatusNotFound)
-	ErrConflict     = New("conflict", http.StatusConflict)
-	ErrInternal     = New("internal server error", http.StatusInternalServerError)
+	ErrBadRequest   = New("Bad request", http.StatusBadRequest)
+	ErrUnauthorized = New("Unauthorized access", http.StatusUnauthorized)
+	ErrForbidden    = New("Forbidden access", http.StatusForbidden)
+	ErrNotFound     = New("Resource not found", http.StatusNotFound)
+	ErrConflict     = New("Conflict error", http.StatusConflict)
+	ErrInternal     = New("Internal server error", http.StatusInternalServerError)
 )
 
 func WriteHTTPError(w http.ResponseWriter, err error) {

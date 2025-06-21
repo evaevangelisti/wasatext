@@ -381,7 +381,7 @@ func (repository *ConversationRepository) IsUserInConversation(conversationID, u
 
 	if err := row.Scan(&exists); err != nil {
 		if err == sql.ErrNoRows {
-			return false, nil
+			return false, errors.ErrNotFound
 		}
 
 		return false, errors.ErrInternal

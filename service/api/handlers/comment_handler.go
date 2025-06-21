@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"regexp"
 
 	"github.com/evaevangelisti/wasatext/service/api/middlewares"
 	"github.com/evaevangelisti/wasatext/service/api/services"
@@ -50,12 +49,6 @@ func (handler *CommentHandler) CommentMessage(w http.ResponseWriter, r *http.Req
 
 	validate := validator.New()
 	if err := validate.Struct(request); err != nil {
-		errors.WriteHTTPError(w, errors.ErrBadRequest)
-		return
-	}
-
-	re := regexp.MustCompile(`[\x{1F600}-\x{1F64F}]|[\x{1F300}-\x{1F5FF}]|[\x{1F680}-\x{1F6FF}]|[\x{2600}-\x{26FF}]|[\x{2700}-\x{27BF}]`)
-	if !re.MatchString(request.Emoji) {
 		errors.WriteHTTPError(w, errors.ErrBadRequest)
 		return
 	}
