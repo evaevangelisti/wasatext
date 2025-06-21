@@ -6,9 +6,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/evaevangelisti/wasatext/service/api/middlewares"
 	"github.com/evaevangelisti/wasatext/service/api/services"
+	"github.com/evaevangelisti/wasatext/service/utils"
 	"github.com/evaevangelisti/wasatext/service/utils/errors"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -59,26 +61,39 @@ func (handler *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var attachment string
+	var dstFilename, dstPath string
 
 	file, header, err := r.FormFile("image")
 	if err == nil && file != nil {
 		defer file.Close()
 
-		ext := filepath.Ext(header.Filename)
-		if ext == "" {
+		ext := strings.ToLower(filepath.Ext(header.Filename))
+		if ext != utils.ExtJPG && ext != utils.ExtJPEG && ext != utils.ExtPNG && ext != utils.ExtWEBP {
 			errors.WriteHTTPError(w, errors.ErrBadRequest)
 			return
 		}
 
-		dstDir := "./uploads/attachments"
+		dstFilename = uuid.New().String() + ext
+		dstPath = "./tmp/uploads/attachments/" + dstFilename
+	}
+
+	attachment := ""
+	if dstFilename != "" {
+		attachment = "/tmp/uploads/attachments/" + dstFilename
+	}
+
+	message, err := handler.Service.CreateMessage(cid, auid, content, attachment)
+	if err != nil {
+		errors.WriteHTTPError(w, err)
+		return
+	}
+
+	if file != nil && dstPath != "" {
+		dstDir := "./tmp/uploads/attachments/"
 		if err := os.MkdirAll(dstDir, 0755); err != nil {
 			errors.WriteHTTPError(w, errors.ErrInternal)
 			return
 		}
-
-		dstFilename := uuid.New().String() + ext
-		dstPath := filepath.Join(dstDir, dstFilename)
 
 		dst, err := os.Create(dstPath)
 		if err != nil {
@@ -92,14 +107,6 @@ func (handler *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Reques
 			errors.WriteHTTPError(w, errors.ErrInternal)
 			return
 		}
-
-		attachment = "/uploads/attachments/" + dstFilename
-	}
-
-	message, err := handler.Service.CreateMessage(cid, auid, content, attachment)
-	if err != nil {
-		errors.WriteHTTPError(w, err)
-		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -111,7 +118,7 @@ func (handler *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Reques
 }
 
 type ForwardMessageRequest struct {
-	MessageID uuid.UUID `json:"messageId" validate:"required,uuid4"`
+	MessageID uuid.UUID `json:"messageId" validate:"required"`
 }
 
 func (handler *MessageHandler) ForwardMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {

@@ -6,7 +6,11 @@ CREATE TABLE IF NOT EXISTS comments (
         LENGTH (emoji) >= 1
         AND LENGTH (emoji) <= 10
     ),
-    commented_at TEXT NOT NULL CHECK (commented_at LIKE "____-__-__T__:__:__Z"),
+    commented_at TEXT NOT NULL CHECK (
+        commented_at LIKE "____-__-__T__:__:__Z" OR
+        commented_at LIKE "____-__-__T__:__:__+__:__" OR
+        commented_at LIKE "____-__-__T__:__:__-__:__"
+    ),
     message_id TEXT NOT NULL CHECK (
         message_id LIKE '________-____-____-____-____________'
     ),

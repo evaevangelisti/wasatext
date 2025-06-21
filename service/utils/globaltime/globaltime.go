@@ -20,10 +20,10 @@ func Parse(t string) (time.Time, error) {
 	return time.Parse(time.RFC3339, t)
 }
 
-func Format(t time.Time) (string, error) {
+func Format(t time.Time) string {
 	if t.IsZero() {
-		return "", nil
+		return ""
 	}
 
-	return t.Format(time.RFC3339), nil
+	return t.Format(time.RFC3339)
 }

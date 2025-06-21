@@ -79,7 +79,7 @@ func (router *routerImpl) Handler() http.Handler {
 	conversationService := &services.ConversationService{Repository: conversationRepository}
 	conversationHandler := &handlers.ConversationHandler{Service: conversationService}
 
-	httpRouter.GET("/conversations", withAuth(conversationHandler.GetConversations))
+	httpRouter.GET("/conversations", withAuth(conversationHandler.GetMyConversations))
 	httpRouter.GET("/conversations/:conversationId", withAuth(conversationHandler.GetConversation))
 	httpRouter.POST("/conversations", withAuth(conversationHandler.CreateConversation))
 	httpRouter.POST("/groups/:conversationId/members", withAuth(conversationHandler.AddToGroup))

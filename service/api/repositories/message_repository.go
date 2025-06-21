@@ -3,6 +3,7 @@ package repositories
 import (
 	"database/sql"
 	stdErrors "errors"
+	"os"
 	"time"
 
 	"github.com/evaevangelisti/wasatext/service/api/models"
@@ -24,16 +25,21 @@ func (repository *MessageRepository) GetMessagesByConversationID(conversationID 
 
 	defer rows.Close()
 
-	var messages []models.Message
+	messages := []models.Message{}
 
 	for rows.Next() {
-		var messageID uuid.UUID
+		var messageID string
 
 		if err := rows.Scan(&messageID); err != nil {
 			return nil, errors.ErrInternal
 		}
 
-		message, err := repository.GetMessageByID(messageID)
+		mid, err := uuid.Parse(messageID)
+		if err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		message, err := repository.GetMessageByID(mid)
 		if err != nil {
 			return nil, err
 		}
@@ -49,20 +55,24 @@ func (repository *MessageRepository) GetMessagesByConversationID(conversationID 
 }
 
 func (repository *MessageRepository) GetMessageByID(messageID uuid.UUID) (*models.Message, error) {
-	row := repository.Database.QueryRow("SELECT message_id, sender_id, content, attachment, sent_at, edited_at, conversation_id FROM messages WHERE message_id = ?", messageID.String())
+	row := repository.Database.QueryRow("SELECT sender_id, content, attachment, sent_at, edited_at FROM messages WHERE message_id = ?", messageID.String())
 
 	var message models.Message
 
-	var senderID string
-	var sentAt, editedAt string
+	var (
+		senderID, sentAt              string
+		content, attachment, editedAt sql.NullString
+	)
 
-	if err := row.Scan(&message.ID, &senderID, &message.Content, &message.Attachment, &sentAt, &editedAt, &message.ConversationID); err != nil {
+	if err := row.Scan(&senderID, &content, &attachment, &sentAt, &editedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
 
 		return nil, errors.ErrInternal
 	}
+
+	message.ID = messageID
 
 	uid, err := uuid.Parse(senderID)
 	if err != nil {
@@ -77,6 +87,14 @@ func (repository *MessageRepository) GetMessageByID(messageID uuid.UUID) (*model
 	}
 
 	message.Sender = *sender
+
+	if content.Valid {
+		message.Content = content.String
+	}
+
+	if attachment.Valid {
+		message.Attachment = attachment.String
+	}
 
 	commentRepository := CommentRepository{Database: repository.Database}
 
@@ -98,7 +116,7 @@ func (repository *MessageRepository) GetMessageByID(messageID uuid.UUID) (*model
 		if err != nil {
 			return nil, errors.ErrInternal
 		}
-	} else if stdErrors.Is(err, sql.ErrNoRows) {
+	} else if !stdErrors.Is(err, sql.ErrNoRows) {
 		return nil, errors.ErrInternal
 	} else {
 		message.IsForwarded = false
@@ -111,17 +129,27 @@ func (repository *MessageRepository) GetMessageByID(messageID uuid.UUID) (*model
 
 	defer trackingRows.Close()
 
-	message.Trackings.Read = make(map[string]string)
+	message.Trackings.Read = make(map[uuid.UUID]time.Time)
 
 	for trackingRows.Next() {
-		var userID, readAt string
+		var userID, readAtStr string
 
-		if err := trackingRows.Scan(&userID, &readAt); err != nil {
+		if err := trackingRows.Scan(&userID, &readAtStr); err != nil {
 			return nil, errors.ErrInternal
 		}
 
-		if readAt != "" {
-			message.Trackings.Read[userID] = readAt
+		uid, err = uuid.Parse(userID)
+		if err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		readAtTime, err := globaltime.Parse(readAtStr)
+		if err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		if readAtStr != "" {
+			message.Trackings.Read[uid] = readAtTime
 		}
 	}
 
@@ -134,8 +162,8 @@ func (repository *MessageRepository) GetMessageByID(messageID uuid.UUID) (*model
 		return nil, errors.ErrInternal
 	}
 
-	if editedAt != "" {
-		message.EditedAt, err = globaltime.Parse(editedAt)
+	if editedAt.Valid && editedAt.String != "" {
+		message.EditedAt, err = globaltime.Parse(editedAt.String)
 		if err != nil {
 			return nil, errors.ErrInternal
 		}
@@ -146,14 +174,9 @@ func (repository *MessageRepository) GetMessageByID(messageID uuid.UUID) (*model
 
 func (repository *MessageRepository) CreateMessage(conversationID, userID uuid.UUID, content, attachment string) (uuid.UUID, error) {
 	messageID := uuid.New()
-	sentAtTime := globaltime.Now()
+	sentAt := globaltime.Now()
 
-	sentAtStr, err := globaltime.Format(sentAtTime)
-	if err != nil {
-		return uuid.Nil, errors.ErrInternal
-	}
-
-	_, err = repository.Database.Exec("INSERT INTO messages (message_id, conversation_id, sender_id, content, attachment, sent_at) VALUES (?, ?, ?, ?, ?, ?)", messageID.String(), conversationID.String(), userID.String(), content, attachment, sentAtStr)
+	_, err := repository.Database.Exec("INSERT INTO messages (message_id, conversation_id, sender_id, content, attachment, sent_at) VALUES (?, ?, ?, ?, ?, ?)", messageID.String(), conversationID.String(), userID.String(), sql.NullString{String: content, Valid: content != ""}, sql.NullString{String: attachment, Valid: attachment != ""}, globaltime.Format(sentAt))
 	if err != nil {
 		return uuid.Nil, errors.ErrInternal
 	}
@@ -170,12 +193,7 @@ func (repository *MessageRepository) CreateForwardedMessage(conversationID, user
 	}
 
 	forwardedMessageID := uuid.New()
-	forwardedAtTime := globaltime.Now()
-
-	forwardedAtStr, err := globaltime.Format(forwardedAtTime)
-	if err != nil {
-		return uuid.Nil, errors.ErrInternal
-	}
+	forwardedAt := globaltime.Now()
 
 	tx, err := repository.Database.Begin()
 	if err != nil {
@@ -186,12 +204,12 @@ func (repository *MessageRepository) CreateForwardedMessage(conversationID, user
 		_ = tx.Rollback()
 	}()
 
-	_, err = repository.Database.Exec("INSERT INTO messages (message_id, content, attachment, sent_at, conversation_id, sender_id) VALUES (?, ?, ?, ?, ?, ?)", forwardedMessageID.String(), originalMessage.Content, originalMessage.Attachment, forwardedAtStr, conversationID.String(), userID.String())
+	_, err = repository.Database.Exec("INSERT INTO messages (message_id, content, attachment, sent_at, conversation_id, sender_id) VALUES (?, ?, ?, ?, ?, ?)", forwardedMessageID.String(), sql.NullString{String: originalMessage.Content, Valid: originalMessage.Content != ""}, sql.NullString{String: originalMessage.Attachment, Valid: originalMessage.Attachment != ""}, globaltime.Format(forwardedAt), conversationID.String(), userID.String())
 	if err != nil {
 		return uuid.Nil, errors.ErrInternal
 	}
 
-	_, err = tx.Exec("INSERT INTO forwarded_messages (forwarded_message_id, forwarded_at, original_message_id, conversation_id, sender_id) VALUES (?, ?, ?, ?, ?)", forwardedMessageID.String(), forwardedAtStr, originalMessage.ID.String(), conversationID.String(), userID.String())
+	_, err = tx.Exec("INSERT INTO forwarded_messages (forwarded_message_id, forwarded_at, original_message_id, conversation_id, sender_id) VALUES (?, ?, ?, ?, ?)", forwardedMessageID.String(), globaltime.Format(forwardedAt), originalMessage.ID.String(), conversationID.String(), userID.String())
 	if err != nil {
 		return uuid.Nil, errors.ErrInternal
 	}
@@ -203,13 +221,8 @@ func (repository *MessageRepository) CreateForwardedMessage(conversationID, user
 	return forwardedMessageID, nil
 }
 
-func (repository *MessageRepository) AddMessageTracking(messageID, userID uuid.UUID, readAtTime time.Time) error {
-	readAtStr, err := globaltime.Format(readAtTime)
-	if err != nil {
-		return errors.ErrInternal
-	}
-
-	_, err = repository.Database.Exec(`INSERT INTO message_trackings (message_id, user_id, read_at) VALUES (?, ?, ?)`, messageID.String(), userID.String(), readAtStr)
+func (repository *MessageRepository) AddMessageTracking(messageID, userID uuid.UUID, readAt time.Time) error {
+	_, err := repository.Database.Exec(`INSERT INTO message_trackings (message_id, user_id, read_at) VALUES (?, ?, ?)`, messageID.String(), userID.String(), globaltime.Format(readAt))
 	if err != nil {
 		return errors.ErrInternal
 	}
@@ -218,14 +231,9 @@ func (repository *MessageRepository) AddMessageTracking(messageID, userID uuid.U
 }
 
 func (repository *MessageRepository) UpdateMessage(messageID uuid.UUID, content string) error {
-	editedAtTime := globaltime.Now()
+	editedAt := globaltime.Now()
 
-	editedAtStr, err := globaltime.Format(editedAtTime)
-	if err != nil {
-		return errors.ErrInternal
-	}
-
-	_, err = repository.Database.Exec("UPDATE messages SET content = ?, edited_at = ? WHERE message_id = ?", content, editedAtStr, messageID.String())
+	_, err := repository.Database.Exec("UPDATE messages SET content = ?, edited_at = ? WHERE message_id = ?", content, globaltime.Format(editedAt), messageID.String())
 	if err != nil {
 		return errors.ErrInternal
 	}
@@ -234,6 +242,13 @@ func (repository *MessageRepository) UpdateMessage(messageID uuid.UUID, content 
 }
 
 func (repository *MessageRepository) DeleteMessage(messageID uuid.UUID) error {
+	var attachment sql.NullString
+
+	err := repository.Database.QueryRow("SELECT attachment FROM messages WHERE message_id = ?", messageID.String()).Scan(&attachment)
+	if err != nil && !stdErrors.Is(err, sql.ErrNoRows) {
+		return errors.ErrInternal
+	}
+
 	tx, err := repository.Database.Begin()
 	if err != nil {
 		return errors.ErrInternal
@@ -248,7 +263,7 @@ func (repository *MessageRepository) DeleteMessage(messageID uuid.UUID) error {
 		return errors.ErrInternal
 	}
 
-	_, err = tx.Exec("DELETE FROM forwarded_messages WHERE message_id = ?", messageID.String())
+	_, err = tx.Exec("DELETE FROM forwarded_messages WHERE original_message_id = ?", messageID.String())
 	if err != nil {
 		return errors.ErrInternal
 	}
@@ -265,6 +280,12 @@ func (repository *MessageRepository) DeleteMessage(messageID uuid.UUID) error {
 
 	if err = tx.Commit(); err != nil {
 		return errors.ErrInternal
+	}
+
+	if attachment.Valid && attachment.String != "" {
+		if err := os.Remove("." + attachment.String); err != nil && !os.IsNotExist(err) {
+			return errors.ErrInternal
+		}
 	}
 
 	return nil

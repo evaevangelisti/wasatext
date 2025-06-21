@@ -10,7 +10,11 @@ CREATE TABLE IF NOT EXISTS users (
         LENGTH (profile_picture) >= 11
         AND LENGTH (profile_picture) <= 255
     ),
-    created_at TEXT NOT NULL CHECK (created_at LIKE "____-__-__T__:__:__Z")
+    created_at TEXT NOT NULL CHECK (
+        created_at LIKE "____-__-__T__:__:__Z" OR
+        created_at LIKE "____-__-__T__:__:__+__:__" OR
+        created_at LIKE "____-__-__T__:__:__-__:__"
+    )
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_username on users (username);

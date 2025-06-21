@@ -3,5 +3,9 @@ CREATE TABLE IF NOT EXISTS conversations (
         conversation_id LIKE '________-____-____-____-____________'
     ),
     type TEXT NOT NULL CHECK (type IN ("private", "group")),
-    created_at TEXT NOT NULL CHECK (created_at LIKE "____-__-__T__:__:__Z")
+    created_at TEXT NOT NULL CHECK (
+        created_at LIKE "____-__-__T__:__:__Z" OR
+        created_at LIKE "____-__-__T__:__:__+__:__" OR
+        created_at LIKE "____-__-__T__:__:__-__:__"
+    )
 );

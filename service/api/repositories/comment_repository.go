@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/evaevangelisti/wasatext/service/api/models"
 	"github.com/evaevangelisti/wasatext/service/database"
@@ -15,33 +16,33 @@ type CommentRepository struct {
 }
 
 func (repository *CommentRepository) GetCommentsByMessageID(messageID uuid.UUID) ([]models.Comment, error) {
-	rows, err := repository.Database.Query("SELECT c.comment_id, c.emoji, c.commented_at, c.message_id, u.user_id, u.username, u.profile_picture, u.created_at FROM comments c JOIN users u ON c.commenter_id = u.user_id WHERE c.conversation_id = ? ORDER BY c.commented_at ASC", messageID.String())
+	rows, err := repository.Database.Query("SELECT c.comment_id FROM comments c WHERE c.message_id = ? ORDER BY c.commented_at ASC", messageID.String())
 	if err != nil {
 		return nil, errors.ErrInternal
 	}
 
 	defer rows.Close()
 
-	var comments []models.Comment
+	comments := []models.Comment{}
 
 	for rows.Next() {
-		var comment models.Comment
+		var commentID string
 
-		var commenter models.User
-		var commentedAt string
-
-		if err := rows.Scan(&comment.ID, &comment.Emoji, &commentedAt, &comment.MessageID, &commenter.ID, &commenter.Username, &commenter.ProfilePicture, &commenter.CreatedAt); err != nil {
+		if err := rows.Scan(&commentID); err != nil {
 			return nil, errors.ErrInternal
 		}
 
-		comment.Commenter = commenter
-
-		comment.CommentedAt, err = globaltime.Parse(commentedAt)
+		cid, err := uuid.Parse(commentID)
 		if err != nil {
 			return nil, errors.ErrInternal
 		}
 
-		comments = append(comments, comment)
+		comment, err := repository.GetCommentByID(cid)
+		if err != nil {
+			return nil, err
+		}
+
+		comments = append(comments, *comment)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -52,19 +53,20 @@ func (repository *CommentRepository) GetCommentsByMessageID(messageID uuid.UUID)
 }
 
 func (repository *CommentRepository) GetCommentByID(commentID uuid.UUID) (*models.Comment, error) {
-	row := repository.Database.QueryRow("SELECT comment_id, commenter_id, emoji, commented_at, message_id FROM comments WHERE comment_id = ?", commentID.String())
+	row := repository.Database.QueryRow("SELECT user_id, emoji, commented_at FROM comments WHERE comment_id = ?", commentID.String())
 
 	var comment models.Comment
-
 	var commenterID, commentedAt string
 
-	if err := row.Scan(&comment.ID, &commenterID, &comment.Emoji, &commentedAt, &comment.MessageID); err != nil {
+	if err := row.Scan(&commenterID, &comment.Emoji, &commentedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
 
 		return nil, errors.ErrInternal
 	}
+
+	comment.ID = commentID
 
 	uid, err := uuid.Parse(commenterID)
 	if err != nil {
@@ -90,15 +92,11 @@ func (repository *CommentRepository) GetCommentByID(commentID uuid.UUID) (*model
 
 func (repository *CommentRepository) CreateComment(messageID, userID uuid.UUID, emoji string) (uuid.UUID, error) {
 	commentID := uuid.New()
-	commentedAtTime := globaltime.Now()
+	commentedAt := globaltime.Now()
 
-	commentedAtStr, err := globaltime.Format(commentedAtTime)
+	_, err := repository.Database.Exec("INSERT INTO comments (comment_id, emoji, commented_at, message_id, user_id) VALUES (?, ?, ?, ?, ?)", commentID.String(), emoji, globaltime.Format(commentedAt), messageID.String(), userID.String())
 	if err != nil {
-		return uuid.Nil, errors.ErrInternal
-	}
-
-	_, err = repository.Database.Exec("INSERT INTO comments (comment_id, emoji, commented_at, message_id, commenter_id) VALUES (?, ?, ?, ?, ?)", commentID.String(), emoji, commentedAtStr, messageID.String(), userID.String())
-	if err != nil {
+		fmt.Println(err)
 		return uuid.Nil, errors.ErrInternal
 	}
 

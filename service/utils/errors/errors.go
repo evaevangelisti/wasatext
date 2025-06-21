@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 )
@@ -30,9 +31,17 @@ var (
 func WriteHTTPError(w http.ResponseWriter, err error) {
 	var customError *Error
 
+	w.Header().Set("Content-Type", "application/json")
+
 	if ok := errors.As(err, &customError); ok {
-		http.Error(w, customError.Message, customError.StatusCode)
+		w.WriteHeader(customError.StatusCode)
+		if err := json.NewEncoder(w).Encode(map[string]string{"error": customError.Message}); err != nil {
+			http.Error(w, customError.Message, customError.StatusCode)
+		}
 	} else {
-		http.Error(w, ErrInternal.Message, ErrInternal.StatusCode)
+		w.WriteHeader(ErrInternal.StatusCode)
+		if err := json.NewEncoder(w).Encode(map[string]string{"error": ErrInternal.Message}); err != nil {
+			http.Error(w, ErrInternal.Message, ErrInternal.StatusCode)
+		}
 	}
 }

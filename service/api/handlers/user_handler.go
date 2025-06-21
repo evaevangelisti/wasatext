@@ -6,9 +6,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/evaevangelisti/wasatext/service/api/middlewares"
 	"github.com/evaevangelisti/wasatext/service/api/services"
+	"github.com/evaevangelisti/wasatext/service/utils"
 	"github.com/evaevangelisti/wasatext/service/utils/errors"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -93,14 +95,19 @@ func (handler *UserHandler) DoLogin(w http.ResponseWriter, r *http.Request, _ ht
 		return
 	}
 
-	user, err := handler.Service.DoLogin(request.Username)
+	user, created, err := handler.Service.DoLogin(request.Username)
 	if err != nil {
 		errors.WriteHTTPError(w, err)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+
+	if created {
+		w.WriteHeader(http.StatusCreated)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
 
 	if err = json.NewEncoder(w).Encode(user); err != nil {
 		errors.WriteHTTPError(w, errors.ErrInternal)
@@ -163,31 +170,44 @@ func (handler *UserHandler) SetMyPhoto(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
+	var dstFilename, dstPath string
+
 	if err := r.ParseMultipartForm(5 << 20); err != nil {
 		errors.WriteHTTPError(w, errors.ErrBadRequest)
 		return
 	}
 
-	var profilePicture string
-
 	file, header, err := r.FormFile("image")
 	if err == nil && file != nil {
 		defer file.Close()
 
-		ext := filepath.Ext(header.Filename)
-		if ext == "" {
+		ext := strings.ToLower(filepath.Ext(header.Filename))
+		if ext != utils.ExtJPG && ext != utils.ExtJPEG && ext != utils.ExtPNG && ext != utils.ExtWEBP {
 			errors.WriteHTTPError(w, errors.ErrBadRequest)
 			return
 		}
 
-		dstDir := "./uploads/profile-pictures"
+		dstFilename = uuid.New().String() + ext
+		dstPath = "./tmp/uploads/profile-pictures" + dstFilename
+	}
+
+	profilePicture := ""
+	if dstFilename != "" {
+		profilePicture = "/uploads/profile-pictures/" + dstFilename
+	}
+
+	user, err := handler.Service.UpdateProfilePicture(auid, profilePicture)
+	if err != nil {
+		errors.WriteHTTPError(w, err)
+		return
+	}
+
+	if file != nil && dstPath != "" {
+		dstDir := "./tmp/uploads/profile-pictures"
 		if err := os.MkdirAll(dstDir, 0755); err != nil {
 			errors.WriteHTTPError(w, errors.ErrInternal)
 			return
 		}
-
-		dstFilename := uuid.New().String() + ext
-		dstPath := filepath.Join(dstDir, dstFilename)
 
 		dst, err := os.Create(dstPath)
 		if err != nil {
@@ -201,14 +221,6 @@ func (handler *UserHandler) SetMyPhoto(w http.ResponseWriter, r *http.Request, _
 			errors.WriteHTTPError(w, errors.ErrInternal)
 			return
 		}
-
-		profilePicture = "/uploads/profile-pictures/" + dstFilename
-	}
-
-	user, err := handler.Service.UpdateProfilePicture(auid, profilePicture)
-	if err != nil {
-		errors.WriteHTTPError(w, err)
-		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")

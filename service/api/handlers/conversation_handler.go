@@ -6,9 +6,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/evaevangelisti/wasatext/service/api/middlewares"
 	"github.com/evaevangelisti/wasatext/service/api/services"
+	"github.com/evaevangelisti/wasatext/service/utils"
 	"github.com/evaevangelisti/wasatext/service/utils/errors"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -19,7 +21,7 @@ type ConversationHandler struct {
 	Service *services.ConversationService
 }
 
-func (handler *ConversationHandler) GetConversations(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func (handler *ConversationHandler) GetMyConversations(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	authenticatedUserID, ok := middlewares.GetUserIDFromContext(r.Context())
 	if !ok {
 		errors.WriteHTTPError(w, errors.ErrUnauthorized)
@@ -88,13 +90,25 @@ func (handler *ConversationHandler) GetConversation(w http.ResponseWriter, r *ht
 
 type CreateConversationRequest struct {
 	Type    string      `json:"type" validate:"required,oneof=private group"`
-	UserIDs []uuid.UUID `json:"participants" validate:"required,min=1,max=100"`
+	UserID  uuid.UUID   `json:"userId,omitempty" validate:"omitempty"`
 	Name    string      `json:"name,omitempty" validate:"omitempty,min=1,max=50"`
+	Members []uuid.UUID `json:"members,omitempty" validate:"omitempty,max=100"`
 }
 
 func (handler *ConversationHandler) CreateConversation(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	var request CreateConversationRequest
+	authenticatedUserID, ok := middlewares.GetUserIDFromContext(r.Context())
+	if !ok {
+		errors.WriteHTTPError(w, errors.ErrUnauthorized)
+		return
+	}
 
+	auid, err := uuid.Parse(authenticatedUserID)
+	if err != nil {
+		errors.WriteHTTPError(w, errors.ErrUnauthorized)
+		return
+	}
+
+	var request CreateConversationRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		errors.WriteHTTPError(w, errors.ErrBadRequest)
 		return
@@ -106,9 +120,21 @@ func (handler *ConversationHandler) CreateConversation(w http.ResponseWriter, r 
 		return
 	}
 
+	if request.UserID != uuid.Nil && len(request.Members) > 0 {
+		errors.WriteHTTPError(w, errors.ErrBadRequest)
+		return
+	}
+
 	switch request.Type {
 	case "private":
-		privateConversation, err := handler.Service.CreatePrivateConversation(request.UserIDs)
+		if request.UserID == uuid.Nil || request.UserID == auid {
+			errors.WriteHTTPError(w, errors.ErrBadRequest)
+			return
+		}
+
+		participants := []uuid.UUID{auid, request.UserID}
+
+		privateConversation, err := handler.Service.CreatePrivateConversation(participants)
 		if err != nil {
 			errors.WriteHTTPError(w, err)
 			return
@@ -121,7 +147,9 @@ func (handler *ConversationHandler) CreateConversation(w http.ResponseWriter, r 
 			errors.WriteHTTPError(w, errors.ErrInternal)
 		}
 	case "group":
-		groupConversation, err := handler.Service.CreateGroupConversation(request.Name, request.UserIDs)
+		members := append([]uuid.UUID{auid}, request.Members...)
+
+		groupConversation, err := handler.Service.CreateGroupConversation(request.Name, members)
 		if err != nil {
 			errors.WriteHTTPError(w, err)
 			return
@@ -139,7 +167,7 @@ func (handler *ConversationHandler) CreateConversation(w http.ResponseWriter, r 
 }
 
 type AddToGroupRequest struct {
-	UserID uuid.UUID `json:"userId" validate:"required,uuid4"`
+	UserID uuid.UUID `json:"userId" validate:"required"`
 }
 
 func (handler *ConversationHandler) AddToGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -261,31 +289,44 @@ func (handler *ConversationHandler) SetGroupPhoto(w http.ResponseWriter, r *http
 		return
 	}
 
+	var dstFilename, dstPath string
+
 	if err := r.ParseMultipartForm(5 << 20); err != nil {
 		errors.WriteHTTPError(w, errors.ErrBadRequest)
 		return
 	}
 
-	var photo string
-
 	file, header, err := r.FormFile("image")
 	if err == nil && file != nil {
 		defer file.Close()
 
-		ext := filepath.Ext(header.Filename)
-		if ext == "" {
+		ext := strings.ToLower(filepath.Ext(header.Filename))
+		if ext != utils.ExtJPG && ext != utils.ExtJPEG && ext != utils.ExtPNG && ext != utils.ExtWEBP {
 			errors.WriteHTTPError(w, errors.ErrBadRequest)
 			return
 		}
 
-		dstDir := "./uploads/group-photos"
+		dstFilename = uuid.New().String() + ext
+		dstPath = "./tmp/uploads/group-photos/" + dstFilename
+	}
+
+	photo := ""
+	if dstFilename != "" {
+		photo = "/tmp/uploads/group-photos/" + dstFilename
+	}
+
+	groupConversation, err := handler.Service.UpdateGroupPhoto(cid, auid, photo)
+	if err != nil {
+		errors.WriteHTTPError(w, err)
+		return
+	}
+
+	if file != nil && dstPath != "" {
+		dstDir := "./tmp/uploads/group-photos/"
 		if err := os.MkdirAll(dstDir, 0755); err != nil {
 			errors.WriteHTTPError(w, errors.ErrInternal)
 			return
 		}
-
-		dstFilename := uuid.New().String() + ext
-		dstPath := filepath.Join(dstDir, dstFilename)
 
 		dst, err := os.Create(dstPath)
 		if err != nil {
@@ -299,14 +340,6 @@ func (handler *ConversationHandler) SetGroupPhoto(w http.ResponseWriter, r *http
 			errors.WriteHTTPError(w, errors.ErrInternal)
 			return
 		}
-
-		photo = "/uploads/group-photos/" + dstFilename
-	}
-
-	groupConversation, err := handler.Service.UpdateGroupPhoto(cid, auid, photo)
-	if err != nil {
-		errors.WriteHTTPError(w, err)
-		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")

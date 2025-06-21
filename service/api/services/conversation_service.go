@@ -3,7 +3,6 @@ package services
 import (
 	"github.com/evaevangelisti/wasatext/service/api/models"
 	"github.com/evaevangelisti/wasatext/service/api/repositories"
-	"github.com/evaevangelisti/wasatext/service/utils"
 	"github.com/evaevangelisti/wasatext/service/utils/errors"
 	"github.com/evaevangelisti/wasatext/service/utils/globaltime"
 	"github.com/google/uuid"
@@ -28,7 +27,7 @@ func (service *ConversationService) GetConversationByID(conversationID, authenti
 	readAt := globaltime.Now()
 
 	for _, message := range messages {
-		if _, alreadyRead := message.Trackings.Read[authenticatedUserID.String()]; !alreadyRead {
+		if _, alreadyRead := message.Trackings.Read[authenticatedUserID]; !alreadyRead && message.Sender.ID != authenticatedUserID {
 			err = messageRepository.AddMessageTracking(message.ID, authenticatedUserID, readAt)
 			if err != nil {
 				return nil, err
@@ -40,10 +39,6 @@ func (service *ConversationService) GetConversationByID(conversationID, authenti
 }
 
 func (service *ConversationService) CreatePrivateConversation(participantIDs []uuid.UUID) (*models.PrivateConversation, error) {
-	if len(participantIDs) != 2 || participantIDs[0] == participantIDs[1] {
-		return nil, errors.ErrBadRequest
-	}
-
 	existingConversation, err := service.Repository.GetPrivateConversationByParticipants(participantIDs)
 	if err != nil {
 		return nil, err
@@ -72,7 +67,7 @@ func (service *ConversationService) CreatePrivateConversation(participantIDs []u
 }
 
 func (service *ConversationService) CreateGroupConversation(name string, memberIDs []uuid.UUID) (*models.GroupConversation, error) {
-	if len(memberIDs) == 0 {
+	if name == "" {
 		return nil, errors.ErrBadRequest
 	}
 
@@ -106,10 +101,10 @@ func (service *ConversationService) AddMember(conversationID, authenticatedUserI
 	}
 
 	if len(groupConversation.Members) >= 100 {
-
+		return nil, errors.ErrBadRequest
 	}
 
-	hasAccess, err := utils.IsUserInConversation(service.Repository, conversationID, authenticatedUserID)
+	hasAccess, err := service.Repository.IsUserInConversation(conversationID, authenticatedUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +148,7 @@ func (service *ConversationService) UpdateGroupName(conversationID, authenticate
 		return nil, errors.ErrBadRequest
 	}
 
-	hasAccess, err := utils.IsUserInConversation(service.Repository, conversationID, authenticatedUserID)
+	hasAccess, err := service.Repository.IsUserInConversation(conversationID, authenticatedUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +186,7 @@ func (service *ConversationService) UpdateGroupPhoto(conversationID, authenticat
 		return nil, errors.ErrBadRequest
 	}
 
-	hasAccess, err := utils.IsUserInConversation(service.Repository, conversationID, authenticatedUserID)
+	hasAccess, err := service.Repository.IsUserInConversation(conversationID, authenticatedUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +214,17 @@ func (service *ConversationService) UpdateGroupPhoto(conversationID, authenticat
 }
 
 func (service *ConversationService) RemoveMember(conversationID, userID uuid.UUID) error {
-	hasAccess, err := utils.IsUserInConversation(service.Repository, conversationID, userID)
+	conversation, err := service.Repository.GetConversationByID(conversationID)
+	if err != nil {
+		return err
+	}
+
+	_, ok := conversation.(*models.GroupConversation)
+	if !ok {
+		return errors.ErrBadRequest
+	}
+
+	hasAccess, err := service.Repository.IsUserInConversation(conversationID, userID)
 	if err != nil {
 		return err
 	}
@@ -231,6 +236,18 @@ func (service *ConversationService) RemoveMember(conversationID, userID uuid.UUI
 	err = service.Repository.RemoveMember(conversationID, userID)
 	if err != nil {
 		return err
+	}
+
+	members, err := service.Repository.GetMembers(conversationID)
+	if err != nil {
+		return err
+	}
+
+	if len(members) == 0 {
+		err = service.Repository.DeleteGroupConversation(conversationID)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

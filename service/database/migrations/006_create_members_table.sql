@@ -5,7 +5,11 @@ CREATE TABLE IF NOT EXISTS members (
     user_id TEXT CHECK (
         user_id LIKE '________-____-____-____-____________'
     ),
-    joined_at TEXT NOT NULL CHECK (joined_at LIKE "____-__-__T__:__:__Z"),
+    joined_at TEXT NOT NULL CHECK (
+        joined_at LIKE "____-__-__T__:__:__Z" OR
+        joined_at LIKE "____-__-__T__:__:__+__:__" OR
+        joined_at LIKE "____-__-__T__:__:__-__:__"
+    ),
     PRIMARY KEY (conversation_id, user_id),
     FOREIGN KEY (conversation_id) REFERENCES group_conversations (conversation_id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE SET NULL

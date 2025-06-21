@@ -3,7 +3,6 @@ package services
 import (
 	"github.com/evaevangelisti/wasatext/service/api/models"
 	"github.com/evaevangelisti/wasatext/service/api/repositories"
-	"github.com/evaevangelisti/wasatext/service/utils"
 	"github.com/evaevangelisti/wasatext/service/utils/errors"
 	"github.com/google/uuid"
 )
@@ -13,16 +12,18 @@ type CommentService struct {
 }
 
 func (service *CommentService) CreateComment(messageID, userID uuid.UUID, emoji string) (*models.Comment, error) {
-	messageRepository := &repositories.MessageRepository{Database: service.Repository.Database}
+	conversationRepository := &repositories.ConversationRepository{Database: service.Repository.Database}
 
-	conversationID, err := utils.GetConversationIDFromMessage(messageRepository, messageID)
+	conversation, err := conversationRepository.GetConversationByMessageID(messageID)
 	if err != nil {
 		return nil, err
 	}
 
-	conversationRepository := &repositories.ConversationRepository{Database: service.Repository.Database}
+	if conversation == nil {
+		return nil, errors.ErrNotFound
+	}
 
-	hasAccess, err := utils.IsUserInConversation(conversationRepository, conversationID, userID)
+	hasAccess, err := conversationRepository.IsUserInConversation(conversation.GetID(), userID)
 	if err != nil {
 		return nil, err
 	}
@@ -55,17 +56,15 @@ func (service *CommentService) CreateComment(messageID, userID uuid.UUID, emoji 
 	return comment, nil
 }
 
-func (service *CommentService) DeleteComment(commentID, authenticatedUserID uuid.UUID) error {
-	messageRepository := &repositories.MessageRepository{Database: service.Repository.Database}
+func (service *CommentService) DeleteComment(commentID, userID uuid.UUID) error {
+	conversationRepository := &repositories.ConversationRepository{Database: service.Repository.Database}
 
-	conversationID, err := utils.GetConversationIDFromComment(service.Repository, messageRepository, commentID)
+	conversation, err := conversationRepository.GetConversationByCommentID(commentID)
 	if err != nil {
 		return err
 	}
 
-	conversationRepository := &repositories.ConversationRepository{Database: service.Repository.Database}
-
-	hasAccess, err := utils.IsUserInConversation(conversationRepository, conversationID, authenticatedUserID)
+	hasAccess, err := conversationRepository.IsUserInConversation(conversation.GetID(), userID)
 	if err != nil {
 		return err
 	}
@@ -83,7 +82,7 @@ func (service *CommentService) DeleteComment(commentID, authenticatedUserID uuid
 		return errors.ErrNotFound
 	}
 
-	if comment.Commenter.ID != authenticatedUserID {
+	if comment.Commenter.ID != userID {
 		return errors.ErrForbidden
 	}
 

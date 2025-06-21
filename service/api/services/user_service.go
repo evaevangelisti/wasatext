@@ -19,27 +19,27 @@ func (service *UserService) GetUserByID(userID uuid.UUID) (*models.User, error) 
 	return service.Repository.GetUserByID(userID)
 }
 
-func (service *UserService) DoLogin(username string) (*models.User, error) {
+func (service *UserService) DoLogin(username string) (*models.User, bool, error) {
 	user, err := service.Repository.GetUserByUsername(username)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	if user != nil {
-		return user, nil
+		return user, false, nil
 	}
 
 	userID, err := service.Repository.CreateUser(username)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	user, err = service.Repository.GetUserByID(userID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	return user, nil
+	return user, true, nil
 }
 
 func (service *UserService) UpdateUsername(userID uuid.UUID, username string) (*models.User, error) {

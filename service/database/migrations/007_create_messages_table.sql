@@ -10,8 +10,16 @@ CREATE TABLE IF NOT EXISTS messages (
         LENGTH (attachment) >= 11
         AND LENGTH (attachment) <= 255
     ),
-    sent_at TEXT NOT NULL CHECK (sent_at LIKE "____-__-__T__:__:__Z"),
-    edited_at TEXT CHECK (edited_at LIKE "____-__-__T__:__:__Z"),
+    sent_at TEXT NOT NULL CHECK (
+        sent_at LIKE "____-__-__T__:__:__Z" OR
+        sent_at LIKE "____-__-__T__:__:__+__:__" OR
+        sent_at LIKE "____-__-__T__:__:__-__:__"
+    ),
+    edited_at TEXT CHECK (
+        edited_at LIKE "____-__-__T__:__:__Z" OR
+        edited_at LIKE "____-__-__T__:__:__+__:__" OR
+        edited_at LIKE "____-__-__T__:__:__-__:__"
+    ),
     conversation_id TEXT NOT NULL CHECK (
         conversation_id LIKE '________-____-____-____-____________'
     ),
