@@ -1,47 +1,30 @@
-<script setup>
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
-</script>
-
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-    </div>
-  </header>
-
-  <main>
-    <TheWelcome />
-  </main>
+    <DoLoginView
+        v-if="!authenticatedUser"
+        @dologin-success="onDoLoginSuccess"
+    />
+    <DashboardView
+        v-else
+        :user="authenticatedUser"
+        @profile-updated="onProfileUpdated"
+    />
 </template>
 
-<style scoped>
-header {
-  line-height: 1.5;
+<script setup>
+import { ref } from "vue";
+import api from "@/services/api";
+
+import DashboardView from "@/views/DashboardView.vue";
+import DoLoginView from "@/views/DoLoginView.vue";
+
+const authenticatedUser = ref(null);
+
+function onDoLoginSuccess(user) {
+    authenticatedUser.value = user;
+    api.defaults.headers.common["Authorization"] = `Bearer ${user.userId}`;
 }
 
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
+function onProfileUpdated(updatedUser) {
+    authenticatedUser.value = updatedUser;
 }
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-}
-</style>
+</script>
