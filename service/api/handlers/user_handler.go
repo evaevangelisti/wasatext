@@ -198,7 +198,7 @@ func (handler *UserHandler) SetMyPhoto(w http.ResponseWriter, r *http.Request, _
 		}
 
 		dstFilename = uuid.New().String() + ext
-		dstPath = "./tmp/uploads/profile-pictures" + dstFilename
+		dstPath = "./tmp/uploads/profile-pictures/" + dstFilename
 	}
 
 	profilePicture := ""

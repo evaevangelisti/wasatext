@@ -79,7 +79,7 @@ func (handler *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Reques
 
 	attachment := ""
 	if dstFilename != "" {
-		attachment = "/tmp/uploads/attachments/" + dstFilename
+		attachment = "/uploads/attachments/" + dstFilename
 	}
 
 	message, err := handler.Service.CreateMessage(cid, auid, content, attachment)

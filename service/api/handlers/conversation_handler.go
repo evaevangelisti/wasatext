@@ -312,7 +312,7 @@ func (handler *ConversationHandler) SetGroupPhoto(w http.ResponseWriter, r *http
 
 	photo := ""
 	if dstFilename != "" {
-		photo = "/tmp/uploads/group-photos/" + dstFilename
+		photo = "/uploads/group-photos/" + dstFilename
 	}
 
 	groupConversation, err := handler.Service.UpdateGroupPhoto(cid, auid, photo)

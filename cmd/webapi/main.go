@@ -32,6 +32,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/ardanlabs/conf"
@@ -76,6 +78,11 @@ func run() error {
 	logger.Infof("initializing application")
 	logger.Println("initializing database support")
 
+	if err := os.MkdirAll(filepath.Dir(config.Database.FilePath), 0755); err != nil {
+		logger.WithError(err).Error("failed to open database")
+		return fmt.Errorf("creating database directory: %w", err)
+	}
+
 	db, err := sql.Open("sqlite3", config.Database.FilePath)
 
 	if err != nil {
@@ -112,7 +119,15 @@ func run() error {
 		return fmt.Errorf("creating the API server instance: %w", err)
 	}
 
-	handler := router.Handler()
+	baseHandler := router.Handler()
+
+	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/uploads/") {
+			http.StripPrefix("/uploads/", http.FileServer(http.Dir("./tmp/uploads"))).ServeHTTP(w, r)
+			return
+		}
+		baseHandler.ServeHTTP(w, r)
+	})
 
 	handler, err = setupWebUI(handler)
 
@@ -122,9 +137,7 @@ func run() error {
 	}
 
 	handler = handlers.CORS(
-		handlers.AllowedHeaders([]string{
-			"x-example-header",
-		}),
+		handlers.AllowedHeaders([]string{"Authorization", "Content-Type"}),
 		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}),
 		handlers.AllowedOrigins([]string{"*"}),
 		handlers.MaxAge(1),
