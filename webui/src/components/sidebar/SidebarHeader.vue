@@ -21,7 +21,8 @@
             <button
                 class="sidebar__icon-button"
                 :class="{
-                    'sidebar__icon-button--active': mode === 'newConversation',
+                    'sidebar__icon-button--active':
+                        mode === 'newConversation' || mode === 'newGroup',
                 }"
                 @click="$emit('showNewConversation')"
             >
@@ -67,7 +68,7 @@ const props = defineProps({
 });
 </script>
 
-<style setup>
+<style scoped>
 .sidebar__header {
     display: flex;
     align-items: center;
@@ -102,7 +103,7 @@ const props = defineProps({
 }
 
 .sidebar__icon-button--active > .sidebar__profile-picture {
-    border: 2px solid var(--color-primary);
+    outline: 2px solid var(--color-primary);
 }
 
 .sidebar__icon {

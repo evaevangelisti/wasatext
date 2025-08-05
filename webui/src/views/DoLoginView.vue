@@ -11,6 +11,7 @@
                     placeholder="Username"
                     autocomplete="off"
                     class="do-login__input"
+                    ref="usernameInput"
                 />
                 <span class="text-caption error">{{ error || "\u00A0" }}</span>
             </div>
@@ -20,11 +21,12 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import api from "@/services/api";
 
 const username = ref("");
 const error = ref("");
+const usernameInput = ref(null);
 
 const emit = defineEmits(["dologin-success"]);
 
@@ -38,6 +40,12 @@ async function doLogin() {
         error.value = "Invalid username";
     }
 }
+
+onMounted(() => {
+    if (usernameInput.value) {
+        usernameInput.value.focus();
+    }
+});
 </script>
 
 <style scoped>

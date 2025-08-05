@@ -136,6 +136,17 @@ func (handler *ConversationHandler) CreateConversation(w http.ResponseWriter, r 
 
 		privateConversation, err := handler.Service.CreatePrivateConversation(participants)
 		if err != nil {
+			if err == errors.ErrConflict {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(errors.ErrConflict.StatusCode)
+
+				if err = json.NewEncoder(w).Encode(privateConversation); err != nil {
+					errors.WriteHTTPError(w, errors.ErrInternal)
+				}
+
+				return
+			}
+
 			errors.WriteHTTPError(w, err)
 			return
 		}

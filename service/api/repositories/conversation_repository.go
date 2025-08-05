@@ -451,7 +451,7 @@ func (repository *ConversationRepository) CreateGroupConversation(name string, m
 	}
 
 	for _, userID := range memberIDs {
-		_, err = tx.Exec("INSERT INTO members (conversation_id, user_id, joined_at) VALUES (?, ?, ?)", conversationID.String(), userID.String(), globaltime.Format(createdAt))
+		_, err = tx.Exec("INSERT INTO members (conversation_id, user_id) VALUES (?, ?)", conversationID.String(), userID.String())
 		if err != nil {
 			return uuid.Nil, errors.ErrInternal
 		}

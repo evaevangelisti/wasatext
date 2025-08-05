@@ -89,7 +89,7 @@ const props = defineProps({
     user: Object,
 });
 
-const emit = defineEmits(["profile-updated"]);
+const emit = defineEmits(["profile-update"]);
 
 const editing = ref(false);
 const editedUsername = ref(props.user?.username || "");
@@ -127,13 +127,13 @@ async function saveUsername() {
             username: editedUsername.value,
         });
 
-        emit("profile-updated", response.data);
+        emit("profile-update", response.data);
         editing.value = false;
 
         usernameInput.value?.blur();
         usernameButton.value?.blur();
     } catch (e) {
-        console.log(e);
+        console.error(e);
         usernameError.value = true;
 
         usernameInput.value?.blur();
@@ -157,14 +157,14 @@ async function onPhotoChange(event) {
             headers: { "Content-Type": "multipart/form-data" },
         });
 
-        emit("profile-updated", response.data);
+        emit("profile-update", response.data);
     } catch (e) {
         photoError.value = true;
     }
 }
 </script>
 
-<style setup>
+<style scoped>
 .profile {
     display: flex;
     align-items: center;

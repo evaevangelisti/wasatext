@@ -6,7 +6,7 @@
     <DashboardView
         v-else
         :user="authenticatedUser"
-        @profile-updated="onProfileUpdated"
+        @profile-update="onProfileUpdated"
     />
 </template>
 

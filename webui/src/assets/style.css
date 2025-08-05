@@ -4,6 +4,7 @@
     --color-primary: #6f73d2;
     --color-secondary: #fafafa;
     --color-tertiary: #c4c7c5;
+    --color-quaternary: #2e2f2f;
     --color-background: #161717;
     --color-error: #f2b8b5;
     --font-family: "Funnel Sans", sans-serif;
@@ -175,11 +176,11 @@ button {
 }
 
 .text-secondary {
-    font-size: 0.95rem;
+    font-size: 0.8rem;
     color: var(--color-tertiary);
 }
 
 .text-caption {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     color: var(--color-tertiary);
 }
