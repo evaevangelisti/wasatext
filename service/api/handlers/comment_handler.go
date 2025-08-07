@@ -63,7 +63,7 @@ func (handler *CommentHandler) CommentMessage(w http.ResponseWriter, r *http.Req
 	w.WriteHeader(http.StatusCreated)
 
 	if err = json.NewEncoder(w).Encode(comment); err != nil {
-		errors.WriteHTTPError(w, errors.ErrInternal)
+		return
 	}
 }
 

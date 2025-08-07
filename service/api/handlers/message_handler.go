@@ -113,7 +113,7 @@ func (handler *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusCreated)
 
 	if err = json.NewEncoder(w).Encode(message); err != nil {
-		errors.WriteHTTPError(w, errors.ErrInternal)
+		return
 	}
 }
 
@@ -164,7 +164,7 @@ func (handler *MessageHandler) ForwardMessage(w http.ResponseWriter, r *http.Req
 	w.WriteHeader(http.StatusCreated)
 
 	if err = json.NewEncoder(w).Encode(forwardedMessage); err != nil {
-		errors.WriteHTTPError(w, errors.ErrInternal)
+		return
 	}
 }
 
@@ -215,7 +215,7 @@ func (handler *MessageHandler) EditMessage(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusOK)
 
 	if err = json.NewEncoder(w).Encode(updatedMessage); err != nil {
-		errors.WriteHTTPError(w, errors.ErrInternal)
+		return
 	}
 }
 

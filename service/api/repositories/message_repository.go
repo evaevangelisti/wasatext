@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	stdErrors "errors"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/evaevangelisti/wasatext/service/api/models"
@@ -18,19 +19,38 @@ type MessageRepository struct {
 }
 
 func (repository *MessageRepository) GetMessagesByConversationID(conversationID uuid.UUID) ([]models.Message, error) {
-	rows, err := repository.Database.Query("SELECT message_id FROM messages WHERE conversation_id = ? ORDER BY sent_at ASC", conversationID.String())
+	rows, err := repository.Database.Query(
+		`SELECT message_id, sender_id, content, attachment, sent_at, edited_at
+		 FROM messages
+		 WHERE conversation_id = ?
+		 ORDER BY sent_at ASC`, conversationID.String())
+
 	if err != nil {
 		return nil, errors.ErrInternal
 	}
 
 	defer rows.Close()
 
-	messages := []models.Message{}
+	type rawMessage struct {
+		ID         uuid.UUID
+		SenderID   uuid.UUID
+		Content    string
+		Attachment string
+		SentAt     string
+		EditedAt   string
+	}
+
+	rawMessages := []rawMessage{}
+	messageIDs := []uuid.UUID{}
+	senderIDs := map[uuid.UUID]struct{}{}
 
 	for rows.Next() {
-		var messageID string
+		var (
+			messageID, senderID, sentAt   string
+			content, attachment, editedAt sql.NullString
+		)
 
-		if err := rows.Scan(&messageID); err != nil {
+		if err := rows.Scan(&messageID, &senderID, &content, &attachment, &sentAt, &editedAt); err != nil {
 			return nil, errors.ErrInternal
 		}
 
@@ -39,16 +59,337 @@ func (repository *MessageRepository) GetMessagesByConversationID(conversationID 
 			return nil, errors.ErrInternal
 		}
 
-		message, err := repository.GetMessageByID(mid)
+		sid, err := uuid.Parse(senderID)
 		if err != nil {
-			return nil, err
+			return nil, errors.ErrInternal
 		}
 
-		messages = append(messages, *message)
+		rawMessages = append(rawMessages, rawMessage{
+			ID:         mid,
+			SenderID:   sid,
+			Content:    content.String,
+			Attachment: attachment.String,
+			SentAt:     sentAt,
+			EditedAt:   editedAt.String,
+		})
+
+		messageIDs = append(messageIDs, mid)
+		senderIDs[sid] = struct{}{}
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, errors.ErrInternal
+	}
+
+	if len(rawMessages) == 0 {
+		return []models.Message{}, nil
+	}
+
+	placeholders := make([]string, len(messageIDs))
+	args := make([]interface{}, len(messageIDs))
+	for i, mid := range messageIDs {
+		placeholders[i] = "?"
+		args[i] = mid.String()
+	}
+
+	commentRows, err := repository.Database.Query(
+		`SELECT comment_id, emoji, commented_at, message_id, user_id
+		 FROM comments
+		 WHERE message_id IN (`+strings.Join(placeholders, ",")+`)
+		 ORDER BY commented_at ASC`, args...)
+
+	if err != nil {
+		return nil, errors.ErrInternal
+	}
+
+	defer commentRows.Close()
+
+	type rawComment struct {
+		ID          uuid.UUID
+		Emoji       string
+		CommentedAt string
+		MessageID   uuid.UUID
+		UserID      uuid.UUID
+	}
+
+	rawComments := []rawComment{}
+	commenterIDs := map[uuid.UUID]struct{}{}
+
+	for commentRows.Next() {
+		var (
+			commentID, emoji, commentedAt, messageID, userID string
+		)
+
+		if err := commentRows.Scan(&commentID, &emoji, &commentedAt, &messageID, &userID); err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		cid, err := uuid.Parse(commentID)
+		if err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		mid, err := uuid.Parse(messageID)
+		if err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		uid, err := uuid.Parse(userID)
+		if err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		rawComments = append(rawComments, rawComment{
+			ID:          cid,
+			Emoji:       emoji,
+			CommentedAt: commentedAt,
+			MessageID:   mid,
+			UserID:      uid,
+		})
+
+		commenterIDs[uid] = struct{}{}
+	}
+
+	if err := commentRows.Err(); err != nil {
+		return nil, errors.ErrInternal
+	}
+
+	trackingRows, err := repository.Database.Query(
+		`SELECT message_id, user_id, read_at
+		 FROM message_trackings
+		 WHERE message_id IN (`+strings.Join(placeholders, ",")+`)`, args...)
+
+	if err != nil {
+		return nil, errors.ErrInternal
+	}
+
+	defer trackingRows.Close()
+
+	type rawTracking struct {
+		MessageID uuid.UUID
+		UserID    uuid.UUID
+		ReadAt    string
+	}
+
+	rawTrackings := []rawTracking{}
+	trackingUserIDs := map[uuid.UUID]struct{}{}
+
+	for trackingRows.Next() {
+		var messageID, userID, readAt string
+		if err := trackingRows.Scan(&messageID, &userID, &readAt); err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		mid, err := uuid.Parse(messageID)
+		if err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		uid, err := uuid.Parse(userID)
+		if err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		rawTrackings = append(rawTrackings, rawTracking{
+			MessageID: mid,
+			UserID:    uid,
+			ReadAt:    readAt,
+		})
+
+		trackingUserIDs[uid] = struct{}{}
+	}
+
+	if err := trackingRows.Err(); err != nil {
+		return nil, errors.ErrInternal
+	}
+
+	allUserIDs := map[uuid.UUID]struct{}{}
+
+	for uid := range senderIDs {
+		allUserIDs[uid] = struct{}{}
+	}
+
+	for uid := range commenterIDs {
+		allUserIDs[uid] = struct{}{}
+	}
+
+	for uid := range trackingUserIDs {
+		allUserIDs[uid] = struct{}{}
+	}
+
+	userIDList := []uuid.UUID{}
+
+	for uid := range allUserIDs {
+		userIDList = append(userIDList, uid)
+	}
+
+	userPlaceholders := make([]string, len(userIDList))
+	userArgs := make([]interface{}, len(userIDList))
+	for i, uid := range userIDList {
+		userPlaceholders[i] = "?"
+		userArgs[i] = uid.String()
+	}
+
+	userRows, err := repository.Database.Query(
+		`SELECT user_id, username, profile_picture, created_at
+		 FROM users
+		 WHERE user_id IN (`+strings.Join(userPlaceholders, ",")+`)`, userArgs...)
+
+	if err != nil {
+		return nil, errors.ErrInternal
+	}
+
+	defer userRows.Close()
+
+	userMap := map[uuid.UUID]models.User{}
+
+	for userRows.Next() {
+		var userID, username, createdAt string
+		var profilePicture sql.NullString
+		if err := userRows.Scan(&userID, &username, &profilePicture, &createdAt); err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		uid, err := uuid.Parse(userID)
+		if err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		createdAtTime, err := globaltime.Parse(createdAt)
+		if err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		user := models.User{
+			ID:             uid,
+			Username:       username,
+			ProfilePicture: "",
+			CreatedAt:      createdAtTime,
+		}
+
+		if profilePicture.Valid {
+			user.ProfilePicture = profilePicture.String
+		}
+
+		userMap[uid] = user
+	}
+
+	if err := userRows.Err(); err != nil {
+		return nil, errors.ErrInternal
+	}
+
+	commentsByMessage := map[uuid.UUID][]models.Comment{}
+
+	for _, rc := range rawComments {
+		commentedAtTime, err := globaltime.Parse(rc.CommentedAt)
+		if err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		comment := models.Comment{
+			ID:          rc.ID,
+			Commenter:   userMap[rc.UserID],
+			Emoji:       rc.Emoji,
+			CommentedAt: commentedAtTime,
+		}
+
+		commentsByMessage[rc.MessageID] = append(commentsByMessage[rc.MessageID], comment)
+	}
+
+	trackingByMessage := map[uuid.UUID]map[uuid.UUID]time.Time{}
+
+	for _, rt := range rawTrackings {
+		readAtTime, err := globaltime.Parse(rt.ReadAt)
+		if err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		if trackingByMessage[rt.MessageID] == nil {
+			trackingByMessage[rt.MessageID] = make(map[uuid.UUID]time.Time)
+		}
+
+		trackingByMessage[rt.MessageID][rt.UserID] = readAtTime
+	}
+
+	forwardRows, err := repository.Database.Query(
+		`SELECT forwarded_message_id, original_message_id
+		 FROM forwarded_messages
+		 WHERE forwarded_message_id IN (`+strings.Join(placeholders, ",")+`)`, args...)
+
+	if err != nil {
+		return nil, errors.ErrInternal
+	}
+
+	defer forwardRows.Close()
+
+	forwardedMap := map[uuid.UUID]uuid.UUID{}
+
+	for forwardRows.Next() {
+		var fmid, omid string
+
+		if err := forwardRows.Scan(&fmid, &omid); err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		fmidUUID, err := uuid.Parse(fmid)
+		if err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		omidUUID, err := uuid.Parse(omid)
+		if err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		forwardedMap[fmidUUID] = omidUUID
+	}
+
+	if err := forwardRows.Err(); err != nil {
+		return nil, errors.ErrInternal
+	}
+
+	messages := make([]models.Message, 0, len(rawMessages))
+
+	for _, rm := range rawMessages {
+		sentAtTime, err := globaltime.Parse(rm.SentAt)
+		if err != nil {
+			return nil, errors.ErrInternal
+		}
+
+		var editedAtTime time.Time
+		if rm.EditedAt != "" {
+			editedAtTime, err = globaltime.Parse(rm.EditedAt)
+			if err != nil {
+				return nil, errors.ErrInternal
+			}
+		}
+
+		msg := models.Message{
+			ID:          rm.ID,
+			Sender:      userMap[rm.SenderID],
+			Content:     rm.Content,
+			Attachment:  rm.Attachment,
+			Comments:    commentsByMessage[rm.ID],
+			IsForwarded: false,
+			Trackings: struct {
+				Read map[uuid.UUID]time.Time `json:"read,omitempty" validate:"omitempty"`
+			}{
+				Read: trackingByMessage[rm.ID],
+			},
+			SentAt:   sentAtTime,
+			EditedAt: editedAtTime,
+		}
+
+		if omid, ok := forwardedMap[rm.ID]; ok {
+			msg.IsForwarded = true
+			msg.OriginalMessageID = omid
+		}
+
+		if msg.Trackings.Read == nil {
+			msg.Trackings.Read = make(map[uuid.UUID]time.Time)
+		}
+
+		messages = append(messages, msg)
 	}
 
 	return messages, nil

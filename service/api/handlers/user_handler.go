@@ -56,7 +56,7 @@ func (handler *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request, _ h
 	w.WriteHeader(http.StatusOK)
 
 	if err = json.NewEncoder(w).Encode(users); err != nil {
-		errors.WriteHTTPError(w, errors.ErrInternal)
+		return
 	}
 }
 
@@ -84,7 +84,7 @@ func (handler *UserHandler) GetUser(w http.ResponseWriter, r *http.Request, ps h
 	w.WriteHeader(http.StatusOK)
 
 	if err = json.NewEncoder(w).Encode(user); err != nil {
-		errors.WriteHTTPError(w, errors.ErrInternal)
+		return
 	}
 }
 
@@ -120,7 +120,7 @@ func (handler *UserHandler) DoLogin(w http.ResponseWriter, r *http.Request, _ ht
 	}
 
 	if err = json.NewEncoder(w).Encode(user); err != nil {
-		errors.WriteHTTPError(w, errors.ErrInternal)
+		return
 	}
 }
 
@@ -163,7 +163,7 @@ func (handler *UserHandler) SetMyUserName(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusOK)
 
 	if err = json.NewEncoder(w).Encode(user); err != nil {
-		errors.WriteHTTPError(w, errors.ErrInternal)
+		return
 	}
 }
 
@@ -237,6 +237,6 @@ func (handler *UserHandler) SetMyPhoto(w http.ResponseWriter, r *http.Request, _
 	w.WriteHeader(http.StatusOK)
 
 	if err = json.NewEncoder(w).Encode(user); err != nil {
-		errors.WriteHTTPError(w, errors.ErrInternal)
+		return
 	}
 }

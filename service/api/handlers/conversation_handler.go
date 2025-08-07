@@ -44,7 +44,7 @@ func (handler *ConversationHandler) GetMyConversations(w http.ResponseWriter, r 
 	w.WriteHeader(http.StatusOK)
 
 	if err = json.NewEncoder(w).Encode(conversations); err != nil {
-		errors.WriteHTTPError(w, errors.ErrInternal)
+		return
 	}
 }
 
@@ -141,7 +141,7 @@ func (handler *ConversationHandler) CreateConversation(w http.ResponseWriter, r 
 				w.WriteHeader(errors.ErrConflict.StatusCode)
 
 				if err = json.NewEncoder(w).Encode(privateConversation); err != nil {
-					errors.WriteHTTPError(w, errors.ErrInternal)
+					return
 				}
 
 				return
@@ -155,7 +155,7 @@ func (handler *ConversationHandler) CreateConversation(w http.ResponseWriter, r 
 		w.WriteHeader(http.StatusCreated)
 
 		if err = json.NewEncoder(w).Encode(privateConversation); err != nil {
-			errors.WriteHTTPError(w, errors.ErrInternal)
+			return
 		}
 	case "group":
 		members := append([]uuid.UUID{auid}, request.Members...)
@@ -170,7 +170,7 @@ func (handler *ConversationHandler) CreateConversation(w http.ResponseWriter, r 
 		w.WriteHeader(http.StatusCreated)
 
 		if err = json.NewEncoder(w).Encode(groupConversation); err != nil {
-			errors.WriteHTTPError(w, errors.ErrInternal)
+			return
 		}
 	default:
 		errors.WriteHTTPError(w, errors.ErrBadRequest)
@@ -224,7 +224,7 @@ func (handler *ConversationHandler) AddToGroup(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(http.StatusCreated)
 
 	if err = json.NewEncoder(w).Encode(groupConversation); err != nil {
-		errors.WriteHTTPError(w, errors.ErrInternal)
+		return
 	}
 }
 
@@ -357,7 +357,7 @@ func (handler *ConversationHandler) SetGroupPhoto(w http.ResponseWriter, r *http
 	w.WriteHeader(http.StatusOK)
 
 	if err = json.NewEncoder(w).Encode(groupConversation); err != nil {
-		errors.WriteHTTPError(w, errors.ErrInternal)
+		return
 	}
 }
 

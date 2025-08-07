@@ -19,23 +19,58 @@ func (service *ConversationService) GetConversationsByUserID(userID uuid.UUID) (
 func (service *ConversationService) GetConversationByID(conversationID, authenticatedUserID uuid.UUID) (models.Conversation, error) {
 	messageRepository := &repositories.MessageRepository{Database: service.Repository.Database}
 
-	messages, err := messageRepository.GetMessagesByConversationID(conversationID)
+	conversation, err := service.Repository.GetConversationByID(conversationID)
+
 	if err != nil {
 		return nil, err
 	}
 
+	if conversation == nil {
+		return nil, errors.ErrNotFound
+	}
+
+	var messages []models.Message
+
+	switch conv := conversation.(type) {
+	case *models.PrivateConversation:
+		messages = conv.Messages
+	case *models.GroupConversation:
+		messages = conv.Messages
+	}
+
 	readAt := globaltime.Now()
+	var unreadMessageIDs []uuid.UUID
 
 	for _, message := range messages {
 		if _, alreadyRead := message.Trackings.Read[authenticatedUserID]; !alreadyRead && message.Sender.ID != authenticatedUserID {
-			err = messageRepository.AddMessageTracking(message.ID, authenticatedUserID, readAt)
-			if err != nil {
-				return nil, err
-			}
+			unreadMessageIDs = append(unreadMessageIDs, message.ID)
 		}
 	}
 
-	return service.Repository.GetConversationByID(conversationID)
+	for _, mid := range unreadMessageIDs {
+		err := messageRepository.AddMessageTracking(mid, authenticatedUserID, readAt)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for i := range messages {
+		if contains(unreadMessageIDs, messages[i].ID) {
+			messages[i].Trackings.Read[authenticatedUserID] = readAt
+		}
+	}
+
+	return conversation, nil
+}
+
+func contains(ids []uuid.UUID, id uuid.UUID) bool {
+	for _, v := range ids {
+		if v == id {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (service *ConversationService) CreatePrivateConversation(participantIDs []uuid.UUID) (*models.PrivateConversation, error) {
