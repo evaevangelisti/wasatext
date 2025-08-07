@@ -90,12 +90,25 @@ async function createPrivateConversation(otherUserId) {
   creating.value = true;
 
   try {
-    await api.post("/conversations", {
-      type: "private",
-      userId: otherUserId,
-    });
+    const convResponse = await api.get("/conversations");
+    const conversations = convResponse.data;
 
-    emit("active-conversation", response.data);
+    const existing = conversations.find(c =>
+      c.type === "private" &&
+      c.participants &&
+      c.participants.some(u => u.userId === otherUserId)
+    );
+
+    if (existing) {
+      emit("active-conversation", existing);
+    } else {
+      const response = await api.post("/conversations", {
+        type: "private",
+        userId: otherUserId,
+      });
+
+      emit("active-conversation", response.data);
+    }
   } catch (e) {
     if (e.response && e.response.status === 409) {
       emit("active-conversation", e.response.data);
