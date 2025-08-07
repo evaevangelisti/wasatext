@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	stdErrors "errors"
 	"io"
 	"net/http"
 	"os"
@@ -136,7 +137,7 @@ func (handler *ConversationHandler) CreateConversation(w http.ResponseWriter, r 
 
 		privateConversation, err := handler.Service.CreatePrivateConversation(participants)
 		if err != nil {
-			if err == errors.ErrConflict {
+			if stdErrors.Is(err, errors.ErrConflict) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(errors.ErrConflict.StatusCode)
 
