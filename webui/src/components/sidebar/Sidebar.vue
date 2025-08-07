@@ -35,11 +35,11 @@
 <script setup>
 import { ref } from "vue";
 
-import SidebarHeader from "@/components/Sidebar/SidebarHeader.vue";
-import ConversationList from "@/components/Sidebar/ConversationList.vue";
-import NewConversation from "@/components/Sidebar/NewConversation.vue";
-import NewGroup from "@/components/Sidebar/NewGroup.vue";
-import Profile from "@/components/Sidebar/Profile.vue";
+import SidebarHeader from "@/components/sidebar/SidebarHeader.vue";
+import ConversationList from "@/components/sidebar/ConversationList.vue";
+import NewConversation from "@/components/sidebar/NewConversation.vue";
+import NewGroup from "@/components/sidebar/NewGroup.vue";
+import Profile from "@/components/sidebar/Profile.vue";
 
 const props = defineProps({
   user: Object,
