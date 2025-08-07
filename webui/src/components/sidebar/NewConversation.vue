@@ -106,7 +106,7 @@ async function createPrivateConversation(otherUserId) {
 }
 </script>
 
-<style scoped>
+<style>
 .new-conversation {
     display: flex;
     flex-direction: column;

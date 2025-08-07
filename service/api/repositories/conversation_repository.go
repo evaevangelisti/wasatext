@@ -465,9 +465,7 @@ func (repository *ConversationRepository) CreateGroupConversation(name string, m
 }
 
 func (repository *ConversationRepository) AddMember(conversationID, userID uuid.UUID) (uuid.UUID, error) {
-	joinedAt := globaltime.Now()
-
-	_, err := repository.Database.Exec("INSERT INTO members (conversation_id, user_id, joined_at) VALUES (?, ?, ?)", conversationID.String(), userID.String(), globaltime.Format(joinedAt))
+	_, err := repository.Database.Exec("INSERT INTO members (conversation_id, user_id) VALUES (?, ?)", conversationID.String(), userID.String())
 	if err != nil {
 		return uuid.Nil, err
 	}

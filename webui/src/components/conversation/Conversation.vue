@@ -1,7 +1,17 @@
 <template>
-    <div v-if="props.conversation" class="conversation">
+    <div
+        v-if="props.conversation"
+        class="conversation"
+        :class="{
+            'conversation--sidebar-open': sidebarOpen,
+            'conversation--modal-open': forwardModalOpen,
+        }"
+    >
         <div class="conversation-header">
-            <button class="conversation-header__button">
+            <button
+                class="conversation-header__button"
+                @click="$emit('show-info-sidebar')"
+            >
                 <img
                     v-if="conversation.type === 'group'"
                     :src="
@@ -59,7 +69,10 @@
                         <template
                             v-if="
                                 conversation.type === 'group' &&
-                                message.sender.userId !== user.userId
+                                message.sender.userId !== user.userId &&
+                                (idx === 0 ||
+                                    messages[idx - 1].sender.userId !==
+                                        message.sender.userId)
                             "
                         >
                             <img
@@ -91,7 +104,7 @@
                                 "
                             >
                                 <span
-                                    class="text-body"
+                                    class="text-body sender-name"
                                     style="font-weight: 600"
                                     >{{ message.sender.username }}</span
                                 >
@@ -627,12 +640,6 @@
                 </svg>
             </button>
         </div>
-        <ForwardModal
-            v-if="showForwardModal"
-            :user="user"
-            @close="showForwardModal = false"
-            @forward="handleForward"
-        />
     </div>
     <div v-else class="conversation"></div>
 </template>
@@ -652,14 +659,19 @@ import { backendBaseUrl } from "@/services/baseUrl";
 import defaultProfilePicture from "@/assets/default-profile-picture.jpg";
 import defaultGroupPicture from "@/assets/default-group-picture.jpg";
 
-import ForwardModal from "./ForwardModal.vue";
-
 const props = defineProps({
     user: Object,
     conversation: Object,
+    forwardModalOpen: Boolean,
+    sidebarOpen: Boolean,
 });
 
-const emit = defineEmits(["messageSent", "conversationUpdated"]);
+const emit = defineEmits([
+    "messageSent",
+    "conversationUpdated",
+    "show-info-sidebar",
+    "forward-modal-open",
+]);
 
 function getOtherUser(conversation) {
     if (conversation.type !== "private") return null;
@@ -1090,36 +1102,9 @@ async function deleteMessage(message) {
     }
 }
 
-const showForwardModal = ref(false);
-const forwardMessageData = ref(null);
-
 function forwardMessage(message) {
-    forwardMessageData.value = message;
-    showForwardModal.value = true;
+    emit("forward-modal-open", { open: true, message });
     closeMenu();
-}
-
-function handleForward(conversation) {
-    api.post(`/conversations/${conversation.conversationId}/forwards`, {
-        messageId: forwardMessageData.value.messageId,
-    })
-        .then(() => {
-            showForwardModal.value = false;
-            forwardMessageData.value = null;
-
-            if (
-                props.conversation &&
-                conversation.conversationId ===
-                    props.conversation.conversationId
-            ) {
-                fetchMessages(props.conversation.conversationId);
-            }
-
-            emit("conversationUpdated", Date.now());
-        })
-        .catch((e) => {
-            console.error(e);
-        });
 }
 
 const emojiMenuFor = ref(null);
@@ -1259,6 +1244,10 @@ function onEmojiClick(messageId, group) {
     height: 100vh;
 }
 
+.conversation--sidebar-open {
+    width: 40vw;
+}
+
 .conversation-header {
     width: 100%;
 }
@@ -1304,6 +1293,7 @@ function onEmojiClick(messageId, group) {
     align-items: center;
     align-self: center;
     padding: 0.25rem 0.5rem;
+    margin: 0.5rem 0rem;
     border-radius: 8px;
     background-color: var(--color-quaternary);
 }
@@ -1333,7 +1323,6 @@ function onEmojiClick(messageId, group) {
     flex-direction: column;
     border-radius: 8px;
     padding: 0.25rem;
-    gap: 0.25rem;
     background-color: var(--color-quaternary);
     max-width: 60%;
     width: fit-content;
@@ -1351,6 +1340,10 @@ function onEmojiClick(messageId, group) {
     border: 3px solid var(--color-primary);
 }
 
+.sender-name {
+    padding: 0rem 0.25rem;
+}
+
 .message__content {
     display: flex;
     align-items: flex-end;
@@ -1364,6 +1357,11 @@ function onEmojiClick(messageId, group) {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.message--mine > .message__content--image-and-text {
+    margin-top: 0rem;
 }
 
 .message__image-padding {
@@ -1490,6 +1488,14 @@ function onEmojiClick(messageId, group) {
     border-radius: 50%;
     z-index: 2;
     box-shadow: -1px 1px 4px 0 var(--color-quaternary);
+}
+
+.message__content--only-image {
+    margin-top: 0.5rem;
+}
+
+.message--mine > .message__content--only-image {
+    margin-top: 0rem;
 }
 
 .message__content--image-and-text .message__dropdown-menu-button,

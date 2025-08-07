@@ -34,7 +34,7 @@
                 :class="{ 'profile__username-input--error': usernameError }"
             >
                 <input
-                    id="profile__username"
+                    class="profile__username"
                     ref="usernameInput"
                     v-model="editedUsername"
                     :disabled="!editing"
@@ -164,7 +164,7 @@ async function onPhotoChange(event) {
 }
 </script>
 
-<style scoped>
+<style>
 .profile {
     display: flex;
     align-items: center;
@@ -232,7 +232,7 @@ async function onPhotoChange(event) {
     border-bottom: 2px solid var(--color-primary);
 }
 
-#profile__username {
+.profile__username {
     border: none;
     width: 100%;
     padding: 0.5rem 0rem;
