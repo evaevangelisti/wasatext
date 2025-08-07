@@ -84,7 +84,7 @@ func (handler *ConversationHandler) GetConversation(w http.ResponseWriter, r *ht
 	w.WriteHeader(http.StatusOK)
 
 	if err = json.NewEncoder(w).Encode(conversation); err != nil {
-		errors.WriteHTTPError(w, errors.ErrInternal)
+		return
 	}
 }
 
