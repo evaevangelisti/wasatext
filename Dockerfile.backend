@@ -1,16 +1,11 @@
 FROM golang:1.17 AS builder
 
 WORKDIR /app
-
 COPY . .
 
-RUN apt-get update && apt-get install -y gcc
-
-RUN go build -tags webui -o webapi ./cmd/webapi
+RUN go build -o webapi ./cmd/webapi
 
 FROM debian:bullseye-slim
-
-RUN useradd -u 1000 appuser
 
 WORKDIR /app
 
@@ -18,10 +13,8 @@ COPY --from=builder /app/webapi /app/webapi
 COPY --from=builder /app/conf /app/conf
 COPY --from=builder /app/service/database/migrations /app/service/database/migrations
 
-RUN mkdir -p /app/tmp/uploads/attachments \
-    /app/tmp/uploads/group-photos \
-    /app/tmp/uploads/profile-pictures \
-    && chown -R 1000:1000 /app/tmp
+RUN mkdir -p /app/tmp/uploads/attachments /app/tmp/uploads/group-photos /app/tmp/uploads/profile-pictures
+RUN chown -R 1000:1000 /app/tmp
 
 USER 1000
 

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --base=/dashboard/",
+    "build": "npm ci && vite build --mode production",
     "preview": "vite preview",
     "format": "prettier --write .",
     "lint": "node node_modules/eslint/bin/eslint.js ."
