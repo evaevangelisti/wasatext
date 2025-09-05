@@ -15,10 +15,6 @@ func (service *UserService) GetUsers(q string, authenticatedUserID uuid.UUID) ([
 	return service.Repository.GetUsers(q, authenticatedUserID)
 }
 
-func (service *UserService) GetUserByID(userID uuid.UUID) (*models.User, error) {
-	return service.Repository.GetUserByID(userID)
-}
-
 func (service *UserService) DoLogin(username string) (*models.User, bool, error) {
 	user, err := service.Repository.GetUserByUsername(username)
 	if err != nil {

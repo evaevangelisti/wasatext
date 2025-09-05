@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"database/sql"
-	"fmt"
 
 	"github.com/evaevangelisti/wasatext/service/api/models"
 	"github.com/evaevangelisti/wasatext/service/database"
@@ -96,7 +95,6 @@ func (repository *CommentRepository) CreateComment(messageID, userID uuid.UUID, 
 
 	_, err := repository.Database.Exec("INSERT INTO comments (comment_id, emoji, commented_at, message_id, user_id) VALUES (?, ?, ?, ?, ?)", commentID.String(), emoji, globaltime.Format(commentedAt), messageID.String(), userID.String())
 	if err != nil {
-		fmt.Println(err)
 		return uuid.Nil, errors.ErrInternal
 	}
 

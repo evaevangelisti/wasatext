@@ -70,7 +70,6 @@ func (router *routerImpl) Handler() http.Handler {
 	}
 
 	httpRouter.GET("/users", withAuth(userHandler.GetUsers))
-	httpRouter.GET("/users/:userId", withAuth(userHandler.GetUser))
 	httpRouter.POST("/users", userHandler.DoLogin)
 	httpRouter.PUT("/me/username", withAuth(userHandler.SetMyUserName))
 	httpRouter.PUT("/me/photo", withAuth(userHandler.SetMyPhoto))

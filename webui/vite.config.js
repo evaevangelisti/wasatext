@@ -17,7 +17,7 @@ export default defineConfig(({ command, mode, ssrBuild }) => {
     },
     base: "/dashboard/",
     build: {
-      outDir: "dist/dashboard",
+      outDir: "dist",
     },
   };
 });

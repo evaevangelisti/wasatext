@@ -60,34 +60,6 @@ func (handler *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request, _ h
 	}
 }
 
-func (handler *UserHandler) GetUser(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	userID := ps.ByName("userId")
-
-	uid, err := uuid.Parse(userID)
-	if err != nil {
-		errors.WriteHTTPError(w, errors.ErrBadRequest)
-		return
-	}
-
-	user, err := handler.Service.GetUserByID(uid)
-	if err != nil {
-		errors.WriteHTTPError(w, err)
-		return
-	}
-
-	if user == nil {
-		errors.WriteHTTPError(w, errors.ErrNotFound)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	if err = json.NewEncoder(w).Encode(user); err != nil {
-		return
-	}
-}
-
 type DoLoginRequest struct {
 	Username string `json:"username" validate:"required,min=3,max=16"`
 }

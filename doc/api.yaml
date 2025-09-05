@@ -115,36 +115,6 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError"
 
-  /users/{userId}:
-    get:
-      operationId: getUser
-      summary: Get user
-      description: Gets a user by their unique identifier
-      tags:
-        - users
-      parameters:
-        - $ref: "#/components/parameters/userId"
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: User found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-              examples:
-                userExample:
-                  $ref: "#/components/examples/userExample"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-
   /me/username:
     put:
       operationId: setMyUserName
