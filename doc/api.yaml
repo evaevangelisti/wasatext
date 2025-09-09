@@ -1142,15 +1142,6 @@ components:
         commentedAt: "2023-10-01T12:10:00Z"
 
   parameters:
-    userId:
-      name: userId
-      in: path
-      required: true
-      description: Unique identifier of the user
-      schema:
-        $ref: "#/components/schemas/Id"
-      example: "550e8400-e29b-41d4-a716-446655440000"
-
     conversationId:
       name: conversationId
       in: path
