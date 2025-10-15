@@ -45,14 +45,16 @@
         @click="$emit('show-profile')"
       >
         <img
+          v-if="user"
           :src="
-            user?.profilePicture
-              ? backendBaseUrl + user.profilePicture
-              : defaultProfilePicture
-          "
+            user.profilePicture
+            ? backendBaseUrl + user.profilePicture
+            : defaultProfilePicture
+        "
           alt="Profile"
           class="sidebar__profile-picture"
         >
+        <span v-else class="sidebar__profile-picture sidebar__profile-picture--placeholder" />
       </button>
     </div>
   </div>

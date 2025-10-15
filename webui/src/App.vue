@@ -4,6 +4,7 @@
     v-else
     :user="authenticatedUser"
     @profile-update="onProfileUpdated"
+    @logout="onLogout"
   />
 </template>
 
@@ -23,5 +24,10 @@ function onDoLoginSuccess(user) {
 
 function onProfileUpdated(updatedUser) {
   authenticatedUser.value = updatedUser;
+}
+
+function onLogout() {
+  authenticatedUser.value = null;
+  delete api.defaults.headers.common["Authorization"];
 }
 </script>

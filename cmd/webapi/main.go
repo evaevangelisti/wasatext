@@ -48,7 +48,9 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "error: ", err)
+		logger := logrus.New()
+		logger.SetOutput(os.Stderr)
+		logger.Error("error: ", err)
 		os.Exit(1)
 	}
 }
@@ -76,7 +78,7 @@ func run() error {
 	}
 
 	logger.Infof("initializing application")
-	logger.Println("initializing database support")
+	logger.Info("initializing database support")
 
 	if err := os.MkdirAll(filepath.Dir(config.Database.FilePath), 0755); err != nil {
 		logger.WithError(err).Error("failed to open database")

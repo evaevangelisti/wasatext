@@ -12,6 +12,7 @@
       :active-conversation="activeConversation"
       @profile-update="$emit('profile-update', $event)"
       @active-conversation="onActiveConversation"
+      @logout="$emit('logout')"
     />
     <Conversation
       :user="user"
@@ -62,7 +63,7 @@ const props = defineProps({
   user: Object,
 });
 
-const emit = defineEmits(["profile-update"]);
+const emit = defineEmits(["profile-update", "logout"]);
 
 const activeConversation = ref(null);
 const conversationUpdated = ref(Date.now());

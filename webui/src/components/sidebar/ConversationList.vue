@@ -103,7 +103,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from "vue";
+import { ref, watch, onMounted, onBeforeUnmount } from "vue";
 import api from "@/services/api";
 import { backendBaseUrl } from "@/services/baseUrl";
 
@@ -127,6 +127,8 @@ function getOtherUser(conversation) {
   );
 }
 
+const conversationsPolling = ref(null);
+
 async function loadConversations() {
   try {
     const response = await api.get("/conversations");
@@ -140,7 +142,28 @@ async function loadConversations() {
   }
 }
 
-onMounted(loadConversations);
+function startConversationsPolling() {
+  stopConversationsPolling();
+  conversationsPolling.value = setInterval(() => {
+    loadConversations();
+  }, 3000);
+}
+
+function stopConversationsPolling() {
+  if (conversationsPolling.value) {
+    clearInterval(conversationsPolling.value);
+    conversationsPolling.value = null;
+  }
+}
+
+onMounted(() => {
+  loadConversations();
+  startConversationsPolling();
+});
+
+onBeforeUnmount(() => {
+  stopConversationsPolling();
+});
 
 watch(
   () => props.conversationUpdated,

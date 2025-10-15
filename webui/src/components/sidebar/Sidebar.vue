@@ -28,6 +28,7 @@
       v-if="mode === 'profile'"
       :user="user"
       @profile-update="$emit('profile-update', $event)"
+      @logout="$emit('logout')"
     />
   </div>
 </template>
@@ -47,7 +48,7 @@ const props = defineProps({
   conversationUpdated: [Number, String, Boolean],
 });
 
-const emit = defineEmits(["profile-update", "active-conversation"]);
+const emit = defineEmits(["profile-update", "active-conversation", "logout"]);
 
 const mode = ref("conversationList");
 

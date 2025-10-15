@@ -428,18 +428,37 @@
                 v-for="group in groupComments(msg.comments)"
                 :key="group.emoji"
               >
-                <button
-                  class="comment"
-                  :class="{
-                    'my-comment': group.users.includes(user.userId),
-                  }"
-                  @click="onEmojiClick(msg.messageId, group)"
-                >
-                  {{ group.emoji }}
-                  <span v-if="group.users.length > 1" class="text-secondary">{{
-                    group.users.length
-                  }}</span>
-                </button>
+                <div style="display: inline-block; position: relative;">
+                  <button
+                    class="comment"
+                    @mouseenter="showTooltip(idx)"
+                    @mouseleave="hideTooltip"
+                    :class="{
+                      'my-comment': group.users.includes(user.userId),
+                    }"
+                    @click="onEmojiClick(msg.messageId, group)"
+                  >
+                    {{ group.emoji }}
+                    <span v-if="group.users.length > 1" class="text-secondary">{{
+                      group.users.length
+                    }}</span>
+                  </button>
+                  <div
+                    v-if="hoveredComment === idx"
+                    class="custom-tooltip"
+                  >
+                    <span
+                      v-for="row in tooltipCommentList(group.comments)"
+                      :key="row.name + row.time"
+                      class="tooltip-user"
+                    >
+                      <span :class="{ 'tooltip-you': row.isYou }" style="font-weight:600">
+                        {{ row.name }}
+                      </span>
+                      <span style="color:#aaa"> &ndash; {{ row.time }}</span>
+                    </span>
+                  </div>
+                </div>
               </template>
             </div>
           </div>
@@ -518,6 +537,7 @@ import {
   ref,
   nextTick,
   watch,
+  onMounted,
   onBeforeUnmount,
   computed,
   watchEffect,
@@ -733,18 +753,37 @@ function isSameDay(date1, date2) {
   );
 }
 
+const messagePolling = ref(null);
+
 async function fetchMessages(conversationId) {
   if (!conversationId) {
     messages.value = [];
     return;
   }
-
   try {
     const response = await api.get(`/conversations/${conversationId}`);
     messages.value = response.data.messages;
+    nextTick(() => {
+      waitForImagesToLoad();
+    });
   } catch (e) {
-    messages.value = [];
     console.error(e);
+  }
+}
+
+function startMessagePolling() {
+  stopMessagePolling();
+  if (props.conversation?.conversationId) {
+    messagePolling.value = setInterval(() => {
+      fetchMessages(props.conversation.conversationId);
+    }, 3000);
+  }
+}
+
+function stopMessagePolling() {
+  if (messagePolling.value) {
+    clearInterval(messagePolling.value);
+    messagePolling.value = null;
   }
 }
 
@@ -784,16 +823,23 @@ function waitForImagesToLoad() {
   }
 }
 
+onMounted(() => {
+  if (props.conversation?.conversationId) {
+    fetchMessages(props.conversation.conversationId);
+    startMessagePolling();
+  }
+});
+
 watch(
   () => props.conversation?.conversationId,
-  async (newId) => {
-    if (newId && props.conversation) {
-      await fetchMessages(newId);
-      await nextTick();
-      waitForImagesToLoad();
+  (newId) => {
+    if (newId) {
+      fetchMessages(newId);
+      startMessagePolling();
+    } else {
+      stopMessagePolling();
     }
-  },
-  { immediate: true },
+  }
 );
 
 function isEdited(message) {
@@ -1055,6 +1101,7 @@ watch(
 );
 
 onBeforeUnmount(() => {
+  stopMessagePolling();
   document.removeEventListener("mousedown", handleClickOutside);
 });
 
@@ -1100,6 +1147,26 @@ function onEmojiClick(messageId, group) {
   } else {
     addEmojiComment(messageId, group.emoji);
   }
+}
+
+const hoveredComment = ref(null);
+
+function showTooltip(idx) {
+  hoveredComment.value = idx;
+}
+
+function hideTooltip() {
+  hoveredComment.value = null;
+}
+
+function tooltipCommentList(comments) {
+  if (!comments || !comments.length) return [];
+
+  return comments.map(c => ({
+    isYou: c.commenter.userId === props.user.userId,
+    name: c.commenter.userId === props.user.userId ? 'You' : c.commenter.username,
+    time: formatTime(c.commentedAt)
+  }));
 }
 </script>
 
@@ -1539,4 +1606,31 @@ function onEmojiClick(messageId, group) {
 .messages-wrapper.no-scroll {
   overflow: hidden !important;
 }
+
+.custom-tooltip {
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-quaternary);
+  color: var(--color-tertiary);
+  padding: 0.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  z-index: 100;
+  font-size: 0.95em;
+  pointer-events: none;
+  width: max-content;
+}
+
+.tooltip-user {
+  display: block;
+  margin-bottom: 2px;
+  white-space: normal;
+}
+
+.tooltip-you {
+  color: var(--color-primary);
+}
+
 </style>
