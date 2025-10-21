@@ -20,7 +20,7 @@ type MessageRepository struct {
 
 func (repository *MessageRepository) GetMessagesByConversationID(conversationID uuid.UUID) ([]models.Message, error) {
 	rows, err := repository.Database.Query(
-		`SELECT message_id, sender_id, content, attachment, sent_at, edited_at
+		`SELECT message_id, sender_id, content, attachment, sent_at, edited_at, reply_to_message_id
 		 FROM messages
 		 WHERE conversation_id = ?
 		 ORDER BY sent_at ASC`, conversationID.String())
@@ -32,12 +32,13 @@ func (repository *MessageRepository) GetMessagesByConversationID(conversationID 
 	defer rows.Close()
 
 	type rawMessage struct {
-		ID         uuid.UUID
-		SenderID   uuid.UUID
-		Content    string
-		Attachment string
-		SentAt     string
-		EditedAt   string
+		ID               uuid.UUID
+		SenderID         uuid.UUID
+		Content          string
+		Attachment       string
+		SentAt           string
+		EditedAt         string
+		ReplyToMessageID uuid.UUID
 	}
 
 	rawMessages := []rawMessage{}
@@ -46,11 +47,11 @@ func (repository *MessageRepository) GetMessagesByConversationID(conversationID 
 
 	for rows.Next() {
 		var (
-			messageID, senderID, sentAt   string
-			content, attachment, editedAt sql.NullString
+			messageID, senderID, sentAt                     string
+			content, attachment, editedAt, replyToMessageID sql.NullString
 		)
 
-		if err := rows.Scan(&messageID, &senderID, &content, &attachment, &sentAt, &editedAt); err != nil {
+		if err := rows.Scan(&messageID, &senderID, &content, &attachment, &sentAt, &editedAt, &replyToMessageID); err != nil {
 			return nil, errors.ErrInternal
 		}
 
@@ -64,13 +65,22 @@ func (repository *MessageRepository) GetMessagesByConversationID(conversationID 
 			return nil, errors.ErrInternal
 		}
 
+		var rtmid uuid.UUID
+		if replyToMessageID.Valid && replyToMessageID.String != "" {
+			rtmid, err = uuid.Parse(replyToMessageID.String)
+			if err != nil {
+				return nil, errors.ErrInternal
+			}
+		}
+
 		rawMessages = append(rawMessages, rawMessage{
-			ID:         mid,
-			SenderID:   sid,
-			Content:    content.String,
-			Attachment: attachment.String,
-			SentAt:     sentAt,
-			EditedAt:   editedAt.String,
+			ID:               mid,
+			SenderID:         sid,
+			Content:          content.String,
+			Attachment:       attachment.String,
+			SentAt:           sentAt,
+			EditedAt:         editedAt.String,
+			ReplyToMessageID: rtmid,
 		})
 
 		messageIDs = append(messageIDs, mid)
@@ -365,12 +375,13 @@ func (repository *MessageRepository) GetMessagesByConversationID(conversationID 
 		}
 
 		msg := models.Message{
-			ID:          rm.ID,
-			Sender:      userMap[rm.SenderID],
-			Content:     rm.Content,
-			Attachment:  rm.Attachment,
-			Comments:    commentsByMessage[rm.ID],
-			IsForwarded: false,
+			ID:               rm.ID,
+			Sender:           userMap[rm.SenderID],
+			Content:          rm.Content,
+			Attachment:       rm.Attachment,
+			Comments:         commentsByMessage[rm.ID],
+			IsForwarded:      false,
+			ReplyToMessageID: rm.ReplyToMessageID,
 			Trackings: struct {
 				Read map[uuid.UUID]time.Time `json:"read,omitempty" validate:"omitempty"`
 			}{
@@ -396,16 +407,16 @@ func (repository *MessageRepository) GetMessagesByConversationID(conversationID 
 }
 
 func (repository *MessageRepository) GetMessageByID(messageID uuid.UUID) (*models.Message, error) {
-	row := repository.Database.QueryRow("SELECT sender_id, content, attachment, sent_at, edited_at FROM messages WHERE message_id = ?", messageID.String())
+	row := repository.Database.QueryRow("SELECT sender_id, content, attachment, sent_at, edited_at, reply_to_message_id FROM messages WHERE message_id = ?", messageID.String())
 
 	var message models.Message
 
 	var (
-		senderID, sentAt              string
-		content, attachment, editedAt sql.NullString
+		senderID, sentAt                                string
+		content, attachment, editedAt, replyToMessageID sql.NullString
 	)
 
-	if err := row.Scan(&senderID, &content, &attachment, &sentAt, &editedAt); err != nil {
+	if err := row.Scan(&senderID, &content, &attachment, &sentAt, &editedAt, &replyToMessageID); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -435,6 +446,13 @@ func (repository *MessageRepository) GetMessageByID(messageID uuid.UUID) (*model
 
 	if attachment.Valid {
 		message.Attachment = attachment.String
+	}
+
+	if replyToMessageID.Valid && replyToMessageID.String != "" {
+		message.ReplyToMessageID, err = uuid.Parse(replyToMessageID.String)
+		if err != nil {
+			return nil, errors.ErrInternal
+		}
 	}
 
 	commentRepository := CommentRepository{Database: repository.Database}
@@ -513,11 +531,11 @@ func (repository *MessageRepository) GetMessageByID(messageID uuid.UUID) (*model
 	return &message, nil
 }
 
-func (repository *MessageRepository) CreateMessage(conversationID, userID uuid.UUID, content, attachment string) (uuid.UUID, error) {
+func (repository *MessageRepository) CreateMessage(conversationID, userID uuid.UUID, content, attachment string, replyToMessageID uuid.UUID) (uuid.UUID, error) {
 	messageID := uuid.New()
 	sentAt := globaltime.Now()
 
-	_, err := repository.Database.Exec("INSERT INTO messages (message_id, conversation_id, sender_id, content, attachment, sent_at) VALUES (?, ?, ?, ?, ?, ?)", messageID.String(), conversationID.String(), userID.String(), sql.NullString{String: content, Valid: content != ""}, sql.NullString{String: attachment, Valid: attachment != ""}, globaltime.Format(sentAt))
+	_, err := repository.Database.Exec("INSERT INTO messages (message_id, conversation_id, sender_id, content, attachment, sent_at, reply_to_message_id) VALUES (?, ?, ?, ?, ?, ?, ?)", messageID.String(), conversationID.String(), userID.String(), sql.NullString{String: content, Valid: content != ""}, sql.NullString{String: attachment, Valid: attachment != ""}, globaltime.Format(sentAt), sql.NullString{String: replyToMessageID.String(), Valid: replyToMessageID != uuid.Nil})
 	if err != nil {
 		return uuid.Nil, errors.ErrInternal
 	}

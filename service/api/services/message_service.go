@@ -11,7 +11,7 @@ type MessageService struct {
 	Repository *repositories.MessageRepository
 }
 
-func (service *MessageService) CreateMessage(conversationID, userID uuid.UUID, content, attachment string) (*models.Message, error) {
+func (service *MessageService) CreateMessage(conversationID, userID uuid.UUID, content, attachment string, replyToMessageID uuid.UUID) (*models.Message, error) {
 	conversationRepository := &repositories.ConversationRepository{Database: service.Repository.Database}
 
 	hasAccess, err := conversationRepository.IsUserInConversation(conversationID, userID)
@@ -27,7 +27,19 @@ func (service *MessageService) CreateMessage(conversationID, userID uuid.UUID, c
 		return nil, errors.ErrBadRequest
 	}
 
-	messageID, err := service.Repository.CreateMessage(conversationID, userID, content, attachment)
+	if replyToMessageID != uuid.Nil {
+		replyMessage, err := service.Repository.GetMessageByID(replyToMessageID)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if replyMessage == nil || replyMessage.Sender.ID == uuid.Nil {
+			return nil, errors.ErrBadRequest
+		}
+	}
+
+	messageID, err := service.Repository.CreateMessage(conversationID, userID, content, attachment, replyToMessageID)
 	if err != nil {
 		return nil, err
 	}

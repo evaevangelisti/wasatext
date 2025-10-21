@@ -26,8 +26,12 @@ CREATE TABLE IF NOT EXISTS messages (
     sender_id TEXT NOT NULL CHECK (
         sender_id LIKE '________-____-____-____-____________'
     ),
+    reply_to_message_id TEXT CHECK (
+        reply_to_message_id LIKE '________-____-____-____-____________'
+    ),
     FOREIGN KEY (conversation_id) REFERENCES conversations (conversation_id) ON DELETE CASCADE,
-    FOREIGN KEY (sender_id) REFERENCES users (user_id) ON DELETE SET NULL
+    FOREIGN KEY (sender_id) REFERENCES users (user_id) ON DELETE SET NULL,
+    FOREIGN KEY (reply_to_message_id) REFERENCES messages (message_id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages (conversation_id);

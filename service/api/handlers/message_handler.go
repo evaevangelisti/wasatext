@@ -22,7 +22,8 @@ type MessageHandler struct {
 }
 
 type SendMessageRequest struct {
-	Content string `validate:"omitempty,min=1,max=1000"`
+	Content          string `validate:"omitempty,min=1,max=1000"`
+	ReplyToMessageID string `validate:"omitempty,uuid"`
 }
 
 func (handler *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -52,13 +53,25 @@ func (handler *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Reques
 	}
 
 	content := r.FormValue("content")
+	replyToMessageID := r.FormValue("replyToMessageId")
 
-	request := SendMessageRequest{content}
+	request := SendMessageRequest{Content: content, ReplyToMessageID: replyToMessageID}
 
 	validate := validator.New()
 	if err := validate.Struct(request); err != nil {
 		errors.WriteHTTPError(w, errors.ErrBadRequest)
 		return
+	}
+
+	var rtmid uuid.UUID
+
+	if replyToMessageID != "" {
+		rtmid, err = uuid.Parse(replyToMessageID)
+
+		if err != nil {
+			errors.WriteHTTPError(w, errors.ErrBadRequest)
+			return
+		}
 	}
 
 	var dstFilename, dstPath string
@@ -82,7 +95,7 @@ func (handler *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Reques
 		attachment = "/uploads/attachments/" + dstFilename
 	}
 
-	message, err := handler.Service.CreateMessage(cid, auid, content, attachment)
+	message, err := handler.Service.CreateMessage(cid, auid, content, attachment, rtmid)
 	if err != nil {
 		errors.WriteHTTPError(w, err)
 		return

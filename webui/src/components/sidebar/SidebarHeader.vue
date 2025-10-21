@@ -48,9 +48,9 @@
           v-if="user"
           :src="
             user.profilePicture
-            ? backendBaseUrl + user.profilePicture
-            : defaultProfilePicture
-        "
+              ? backendBaseUrl + user.profilePicture
+              : defaultProfilePicture
+          "
           alt="Profile"
           class="sidebar__profile-picture"
         >

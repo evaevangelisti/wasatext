@@ -100,6 +100,45 @@
                 }}</span>
               </template>
               <div
+                v-if="msg.replyToMessageId && msg.replyToMessageId !== '00000000-0000-0000-0000-000000000000'"
+                class="reply-to-message"
+                :class="{
+                  'reply-to-message--group-other': conversation.type === 'group' && msg.sender.userId !== user.userId
+                }"
+              >
+                <span class="text-body">
+                  {{ getReplyToMessage(msg)?.sender?.userId === user.userId ? "You" : getReplyToMessage(msg)?.sender?.username }}
+                </span>
+                <div class="reply-to-message__content">
+                  <template v-if="getReplyToMessage(msg)?.attachment && !getReplyToMessage(msg)?.content">
+                    <svg viewBox="0 0 24 24" fill="none" class="reply-to-message__icon">
+                      <path
+                        d="M14.2639 15.9375L12.5958 14.2834C11.7909 13.4851 11.3884 13.086 10.9266 12.9401C10.5204 12.8118 10.0838 12.8165 9.68048 12.9536C9.22188 13.1095 8.82814 13.5172 8.04068 14.3326L4.04409 18.2801M14.2639 15.9375L14.6053 15.599C15.4112 14.7998 15.8141 14.4002 16.2765 14.2543C16.6831 14.126 17.12 14.1311 17.5236 14.2687C17.9824 14.4251 18.3761 14.8339 19.1634 15.6514L20 16.4934M14.2639 15.9375L18.275 19.9565M18.275 19.9565C17.9176 20 17.4543 20 16.8 20H7.2C6.07989 20 5.51984 20 5.09202 19.782C4.71569 19.5903 4.40973 19.2843 4.21799 18.908C4.12796 18.7313 4.07512 18.5321 4.04409 18.2801M18.275 19.9565C18.5293 19.9256 18.7301 19.8727 18.908 19.782C19.2843 19.5903 19.5903 19.2843 19.782 18.908C20 18.4802 20 17.9201 20 16.8V16.4934M4.04409 18.2801C4 17.9221 4 17.4575 4 16.8V7.2C4 6.0799 4 5.51984 4.21799 5.09202C4.40973 4.71569 4.71569 4.40973 5.09202 4.21799C5.51984 4 6.07989 4 7.2 4H16.8C17.9201 4 18.4802 4 18.908 4.21799C19.2843 4.40973 19.5903 4.71569 19.782 5.09202C20 5.51984 20 6.0799 20 7.2V16.4934M17 8.99989C17 10.1045 16.1046 10.9999 15 10.9999C13.8954 10.9999 13 10.1045 13 8.99989C13 7.89532 13.8954 6.99989 15 6.99989C16.1046 6.99989 17 7.89532 17 8.99989Z"
+                        stroke="var(--color-tertiary)"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </template>
+                  <template v-else-if="getReplyToMessage(msg)?.attachment && getReplyToMessage(msg)?.content">
+                    <svg viewBox="0 0 24 24" fill="none" class="reply-to-message__icon">
+                      <path
+                        d="M14.2639 15.9375L12.5958 14.2834C11.7909 13.4851 11.3884 13.086 10.9266 12.9401C10.5204 12.8118 10.0838 12.8165 9.68048 12.9536C9.22188 13.1095 8.82814 13.5172 8.04068 14.3326L4.04409 18.2801M14.2639 15.9375L14.6053 15.599C15.4112 14.7998 15.8141 14.4002 16.2765 14.2543C16.6831 14.126 17.12 14.1311 17.5236 14.2687C17.9824 14.4251 18.3761 14.8339 19.1634 15.6514L20 16.4934M14.2639 15.9375L18.275 19.9565M18.275 19.9565C17.9176 20 17.4543 20 16.8 20H7.2C6.07989 20 5.51984 20 5.09202 19.782C4.71569 19.5903 4.40973 19.2843 4.21799 18.908C4.12796 18.7313 4.07512 18.5321 4.04409 18.2801M18.275 19.9565C18.5293 19.9256 18.7301 19.8727 18.908 19.782C19.2843 19.5903 19.5903 19.2843 19.782 18.908C20 18.4802 20 17.9201 20 16.8V16.4934M4.04409 18.2801C4 17.9221 4 17.4575 4 16.8V7.2C4 6.0799 4 5.51984 4.21799 5.09202C4.40973 4.71569 4.71569 4.40973 5.09202 4.21799C5.51984 4 6.07989 4 7.2 4H16.8C17.9201 4 18.4802 4 18.908 4.21799C19.2843 4.40973 19.5903 4.71569 19.782 5.09202C20 5.51984 20 6.0799 20 7.2V16.4934M17 8.99989C17 10.1045 16.1046 10.9999 15 10.9999C13.8954 10.9999 13 10.1045 13 8.99989C13 7.89532 13.8954 6.99989 15 6.99989C16.1046 6.99989 17 7.89532 17 8.99989Z"
+                        stroke="var(--color-tertiary)"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    <span class="text-body" style="var(--color-tertiary)">{{ getReplyToMessage(msg)?.content }}</span>
+                  </template>
+                  <template v-else>
+                    <span class="text-body" style="var(--color-tertiary)">{{ getReplyToMessage(msg)?.content }}</span>
+                  </template>
+                </div>
+              </div>
+              <div
                 v-if="editingMessageId === msg.messageId"
                 class="message__content"
               >
@@ -327,6 +366,18 @@
                   class="message__dropdown-menu"
                   :style="menuStyles"
                 >
+                  <button @click="replyToMessage(msg)">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M20 17V15.8C20 14.1198 20 13.2798 19.673 12.638C19.3854 12.0735 18.9265 11.6146 18.362 11.327C17.7202 11 16.8802 11 15.2 11H4M4 11L8 7M4 11L8 15"
+                        stroke="var(--color-tertiary)"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    <span class="text-body">Reply</span>
+                  </button>
                   <button @click="commentMessage(msg)">
                     <svg viewBox="0 0 24 24" fill="none">
                       <path
@@ -431,11 +482,11 @@
                 <div style="display: inline-block; position: relative;">
                   <button
                     class="comment"
-                    @mouseenter="showTooltip(idx)"
-                    @mouseleave="hideTooltip"
                     :class="{
                       'my-comment': group.users.includes(user.userId),
                     }"
+                    @mouseenter="showTooltip(idx)"
+                    @mouseleave="hideTooltip"
                     @click="onEmojiClick(msg.messageId, group)"
                   >
                     {{ group.emoji }}
@@ -483,6 +534,49 @@
           {{ emoji }}
         </button>
       </div>
+    </div>
+    <div v-if="replyingTo" class="reply-preview">
+      <div class="reply-preview__content">
+        <span
+          class="text-body"
+          :class="{ 'reply-preview__username--me': replyingTo.sender.userId === user.userId }"
+        >
+          {{ replyingTo.sender.userId === user.userId ? "You" : replyingTo.sender.username }}
+        </span>
+        <div class="reply-preview__message">
+          <template v-if="replyingTo.attachment && !replyingTo.content">
+            <svg viewBox="0 0 24 24" fill="none" class="reply-preview__icon">
+              <path
+                d="M14.2639 15.9375L12.5958 14.2834C11.7909 13.4851 11.3884 13.086 10.9266 12.9401C10.5204 12.8118 10.0838 12.8165 9.68048 12.9536C9.22188 13.1095 8.82814 13.5172 8.04068 14.3326L4.04409 18.2801M14.2639 15.9375L14.6053 15.599C15.4112 14.7998 15.8141 14.4002 16.2765 14.2543C16.6831 14.126 17.12 14.1311 17.5236 14.2687C17.9824 14.4251 18.3761 14.8339 19.1634 15.6514L20 16.4934M14.2639 15.9375L18.275 19.9565M18.275 19.9565C17.9176 20 17.4543 20 16.8 20H7.2C6.07989 20 5.51984 20 5.09202 19.782C4.71569 19.5903 4.40973 19.2843 4.21799 18.908C4.12796 18.7313 4.07512 18.5321 4.04409 18.2801M18.275 19.9565C18.5293 19.9256 18.7301 19.8727 18.908 19.782C19.2843 19.5903 19.5903 19.2843 19.782 18.908C20 18.4802 20 17.9201 20 16.8V16.4934M4.04409 18.2801C4 17.9221 4 17.4575 4 16.8V7.2C4 6.0799 4 5.51984 4.21799 5.09202C4.40973 4.71569 4.71569 4.40973 5.09202 4.21799C5.51984 4 6.07989 4 7.2 4H16.8C17.9201 4 18.4802 4 18.908 4.21799C19.2843 4.40973 19.5903 4.71569 19.782 5.09202C20 5.51984 20 6.0799 20 7.2V16.4934M17 8.99989C17 10.1045 16.1046 10.9999 15 10.9999C13.8954 10.9999 13 10.1045 13 8.99989C13 7.89532 13.8954 6.99989 15 6.99989C16.1046 6.99989 17 7.89532 17 8.99989Z"
+                stroke="var(--color-tertiary)"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </template>
+          <template v-else-if="replyingTo.attachment && replyingTo.content">
+            <svg viewBox="0 0 24 24" fill="none" class="reply-preview__icon">
+              <path
+                d="M14.2639 15.9375L12.5958 14.2834C11.7909 13.4851 11.3884 13.086 10.9266 12.9401C10.5204 12.8118 10.0838 12.8165 9.68048 12.9536C9.22188 13.1095 8.82814 13.5172 8.04068 14.3326L4.04409 18.2801M14.2639 15.9375L14.6053 15.599C15.4112 14.7998 15.8141 14.4002 16.2765 14.2543C16.6831 14.126 17.12 14.1311 17.5236 14.2687C17.9824 14.4251 18.3761 14.8339 19.1634 15.6514L20 16.4934M14.2639 15.9375L18.275 19.9565M18.275 19.9565C17.9176 20 17.4543 20 16.8 20H7.2C6.07989 20 5.51984 20 5.09202 19.782C4.71569 19.5903 4.40973 19.2843 4.21799 18.908C4.12796 18.7313 4.07512 18.5321 4.04409 18.2801M18.275 19.9565C18.5293 19.9256 18.7301 19.8727 18.908 19.782C19.2843 19.5903 19.5903 19.2843 19.782 18.908C20 18.4802 20 17.9201 20 16.8V16.4934M4.04409 18.2801C4 17.9221 4 17.4575 4 16.8V7.2C4 6.0799 4 5.51984 4.21799 5.09202C4.40973 4.71569 4.71569 4.40973 5.09202 4.21799C5.51984 4 6.07989 4 7.2 4H16.8C17.9201 4 18.4802 4 18.908 4.21799C19.2843 4.40973 19.5903 4.71569 19.782 5.09202C20 5.51984 20 6.0799 20 7.2V16.4934M17 8.99989C17 10.1045 16.1046 10.9999 15 10.9999C13.8954 10.9999 13 10.1045 13 8.99989C13 7.89532 13.8954 6.99989 15 6.99989C16.1046 6.99989 17 7.89532 17 8.99989Z"
+                stroke="var(--color-tertiary)"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span class="text-body" style="color: var(--color-tertiary)">{{ replyingTo.content }}</span>
+          </template>
+          <template v-else>
+            <span class="text-body" style="color: var(--color-tertiary)">{{ replyingTo.content }}</span>
+          </template>
+        </div>
+      </div>
+      <button class="close-reply-btn" @click="replyingTo = null">
+        <svg viewBox="0 0 24 24" width="16" height="16">
+          <path d="M18 6L6 18M6 6l12 12" stroke="var(--color-tertiary)" stroke-width="2" stroke-linecap="round" />
+        </svg>
+      </button>
     </div>
     <div class="message-field">
       <button class="attachment__button" @click="onAttachmentClick">
@@ -647,6 +741,7 @@ async function sendMessage() {
   const formData = new FormData();
   if (message.value.trim()) formData.append("content", message.value.trim());
   if (imageFile.value) formData.append("image", imageFile.value);
+  if (replyingTo.value) formData.append("replyToMessageId", replyingTo.value.messageId);
 
   try {
     const response = await api.post(
@@ -660,6 +755,9 @@ async function sendMessage() {
     }
 
     messages.value.push(response.data);
+
+    replyingTo.value = null;
+
     message.value = "";
     imageFile.value = null;
     imagePreviewUrl.value = null;
@@ -694,17 +792,6 @@ function autoResizeEdit(e) {
 const messages = ref([]);
 
 const messagesContainer = ref(null);
-
-watch(
-  messages,
-  async () => {
-    await nextTick();
-    if (messagesContainer.value) {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
-    }
-  },
-  { deep: true },
-);
 
 function formatTime(sentAt) {
   if (!sentAt) return "";
@@ -763,9 +850,6 @@ async function fetchMessages(conversationId) {
   try {
     const response = await api.get(`/conversations/${conversationId}`);
     messages.value = response.data.messages;
-    nextTick(() => {
-      waitForImagesToLoad();
-    });
   } catch (e) {
     console.error(e);
   }
@@ -832,10 +916,12 @@ onMounted(() => {
 
 watch(
   () => props.conversation?.conversationId,
-  (newId) => {
+  async (newId) => {
     if (newId) {
-      fetchMessages(newId);
+      await fetchMessages(newId);
       startMessagePolling();
+      await nextTick();
+      waitForImagesToLoad();
     } else {
       stopMessagePolling();
     }
@@ -1168,6 +1254,25 @@ function tooltipCommentList(comments) {
     time: formatTime(c.commentedAt)
   }));
 }
+
+const replyingTo = ref(null);
+
+function replyToMessage(msg) {
+  replyingTo.value = msg;
+  closeMenu();
+}
+
+watch(
+  () => props.conversation?.conversationId,
+  () => {
+    replyingTo.value = null;
+  }
+);
+
+function getReplyToMessage(msg) {
+  if (!msg.replyToMessageId) return null;
+  return messages.value.find(m => m.messageId === msg.replyToMessageId) || null;
+}
 </script>
 
 <style scoped>
@@ -1407,7 +1512,7 @@ function tooltipCommentList(comments) {
 
 .message__dropdown-menu-button {
   position: absolute;
-  top: 4px;
+  bottom: 0px;
   right: 0px;
   display: flex;
   align-items: center;
@@ -1633,4 +1738,103 @@ function tooltipCommentList(comments) {
   color: var(--color-primary);
 }
 
+.reply-preview {
+  display: flex;
+  align-items: flex-start;
+  background: var(--color-quaternary);
+  border-radius: 24px 24px 0 0;
+  padding: 0.5em 1em;
+  margin: 1rem 2.5rem -1rem 2.5rem;
+  border-bottom: 1px solid var(--color-background);
+}
+
+.reply-preview__content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  gap: 0.25rem;
+}
+
+.reply-preview__username--me {
+  color: var(--color-primary);
+}
+
+.reply-preview__message {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.125rem;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.reply-preview__content .text-body {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reply-preview__icon {
+  width: 16px;
+  height: 16px;
+}
+
+.close-reply-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.2em;
+  border-radius: 50%;
+  margin-left: 1em;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reply-to-message {
+  position: relative;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+  width: 100%;
+  border-radius: 8px;
+  gap: 0.25em;
+  overflow: hidden;
+}
+
+.reply-to-message::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.reply-to-message__icon {
+  width: 16px;
+  height: 16px;
+}
+
+.reply-to-message .text-body {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reply-to-message--group-other {
+  margin-top: 0.25rem;
+}
+
+.reply-to-message__content {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.125rem;
+}
 </style>

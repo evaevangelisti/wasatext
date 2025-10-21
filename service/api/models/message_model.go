@@ -14,6 +14,7 @@ type Message struct {
 	Comments          []Comment `json:"comments,omitempty" validate:"omitempty,max=100"`
 	IsForwarded       bool      `json:"isForwarded" validate:"required"`
 	OriginalMessageID uuid.UUID `json:"originalMessageId,omitempty" validate:"omitempty"`
+	ReplyToMessageID  uuid.UUID `json:"replyToMessageId,omitempty" validate:"omitempty"`
 	Trackings         struct {
 		Read map[uuid.UUID]time.Time `json:"read,omitempty" validate:"omitempty"`
 	} `json:"trackings,omitempty" validate:"omitempty"`

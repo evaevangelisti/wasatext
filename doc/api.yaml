@@ -372,6 +372,8 @@ paths:
                   $ref: "#/components/schemas/Content"
                 image:
                   $ref: "#/components/schemas/Image"
+                replayToMessageId:
+                  $ref: "#/components/schemas/Id"
             example:
               content: Hello, how are you?
       security:
@@ -956,6 +958,8 @@ components:
           type: boolean
           description: Indicates if the message is forwarded
         originalMessageId:
+          $ref: "#/components/schemas/Id"
+        replayToMessageId:
           $ref: "#/components/schemas/Id"
         trackings:
           type: object
