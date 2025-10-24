@@ -19,41 +19,55 @@
       <div class="conversations-wrapper">
         <ul class="conversations">
           <li
-            v-for="conversation in conversations"
-            :key="conversation.conversationId"
+            v-for="item in forwardList"
+            :key="item.type === 'conversation' ? item.data.conversationId : item.data.userId"
             class="conversation-item"
           >
             <button
               class="conversation__button"
-              @click="selectConversation(conversation)"
+              @click="item.type === 'conversation'
+                ? selectConversation(item.data)
+                : forwardToUser(item.data)"
             >
-              <img
-                v-if="conversation.type === 'group'"
-                :src="
-                  conversation.photo
-                    ? backendBaseUrl + conversation.photo
-                    : defaultGroupPicture
-                "
-                alt="Group Picture"
-                class="conversation-photo"
-              >
-              <img
-                v-else
-                :src="
-                  getOtherUser(conversation)?.profilePicture
-                    ? backendBaseUrl + getOtherUser(conversation).profilePicture
-                    : defaultProfilePicture
-                "
-                alt="Profile Picture"
-                class="conversation-photo"
-              >
-              <span class="text-body" style="font-weight: 600">
-                {{
-                  conversation.type === "group"
-                    ? conversation.name
-                    : getOtherUser(conversation)?.username
-                }}
-              </span>
+              <template v-if="item.type === 'conversation'">
+                <img
+                  v-if="item.data.type === 'group'"
+                  :src="
+                    item.data.photo
+                      ? backendBaseUrl + item.data.photo
+                      : defaultGroupPicture
+                  "
+                  alt="Group Picture"
+                  class="conversation-photo"
+                >
+                <img
+                  v-else
+                  :src="
+                    getOtherUser(item.data)?.profilePicture
+                      ? backendBaseUrl + getOtherUser(item.data).profilePicture
+                      : defaultProfilePicture
+                  "
+                  alt="Profile Picture"
+                  class="conversation-photo"
+                >
+                <span class="text-body" style="font-weight: 600">
+                  {{
+                    item.data.type === "group"
+                      ? item.data.name
+                      : getOtherUser(item.data)?.username
+                  }}
+                </span>
+              </template>
+              <template v-else>
+                <img
+                  :src="item.data.profilePicture ? backendBaseUrl + item.data.profilePicture : defaultProfilePicture"
+                  alt="Profile Picture"
+                  class="conversation-photo"
+                >
+                <span class="text-body" style="font-weight: 600">
+                  {{ item.data.username }}
+                </span>
+              </template>
             </button>
           </li>
         </ul>
@@ -63,7 +77,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import api from "@/services/api";
 import { backendBaseUrl } from "@/services/baseUrl";
 import defaultProfilePicture from "@/assets/default-profile-picture.jpg";
@@ -77,6 +91,7 @@ const props = defineProps({
 const emit = defineEmits(["close", "forward"]);
 
 const conversations = ref([]);
+const allUsers = ref([]);
 
 function getOtherUser(conversation) {
   if (conversation.type !== "private") return null;
@@ -92,10 +107,52 @@ async function loadConversations() {
   );
 }
 
-onMounted(loadConversations);
+async function loadUsers() {
+  const response = await api.get("/users");
+  allUsers.value = response.data.filter(u => u.userId !== props.user.userId);
+}
+
+onMounted(() => {
+  loadConversations();
+  loadUsers();
+});
+
+const forwardList = computed(() => {
+  const privateUserIds = conversations.value
+    .filter(c => c.type === "private")
+    .map(c => getOtherUser(c)?.userId);
+
+  const convItems = conversations.value.map(c => ({
+    type: "conversation",
+    data: c,
+  }));
+
+  const userItems = allUsers.value
+    .filter(u => !privateUserIds.includes(u.userId))
+    .map(u => ({
+      type: "user",
+      data: u,
+    }));
+
+  return [...convItems, ...userItems];
+});
 
 function selectConversation(conversation) {
   emit("forward", conversation);
+}
+
+async function forwardToUser(user) {
+  try {
+    const response = await api.post("/conversations", {
+      type: "private",
+      userId: user.userId,
+    });
+    emit("forward", response.data);
+  } catch (e) {
+    if (e.response && e.response.status === 409) {
+      emit("forward", e.response.data);
+    }
+  }
 }
 
 function close() {
