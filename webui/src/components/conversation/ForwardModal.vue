@@ -32,21 +32,13 @@
               <template v-if="item.type === 'conversation'">
                 <img
                   v-if="item.data.type === 'group'"
-                  :src="
-                    item.data.photo
-                      ? backendBaseUrl + item.data.photo
-                      : defaultGroupPicture
-                  "
+                  :src="resolveImageUrl(item.data.photo, defaultGroupPicture)"
                   alt="Group Picture"
                   class="conversation-photo"
                 >
                 <img
                   v-else
-                  :src="
-                    getOtherUser(item.data)?.profilePicture
-                      ? backendBaseUrl + getOtherUser(item.data).profilePicture
-                      : defaultProfilePicture
-                  "
+                  :src="resolveImageUrl(getOtherUser(item.data)?.profilePicture, defaultProfilePicture)"
                   alt="Profile Picture"
                   class="conversation-photo"
                 >
@@ -60,7 +52,7 @@
               </template>
               <template v-else>
                 <img
-                  :src="item.data.profilePicture ? backendBaseUrl + item.data.profilePicture : defaultProfilePicture"
+                  :src="resolveImageUrl(item.data.profilePicture, defaultProfilePicture)"
                   alt="Profile Picture"
                   class="conversation-photo"
                 >
@@ -79,7 +71,7 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import api from "@/services/api";
-import { backendBaseUrl } from "@/services/baseUrl";
+import { resolveImageUrl } from "@/services/imageUrl";
 import defaultProfilePicture from "@/assets/default-profile-picture.jpg";
 import defaultGroupPicture from "@/assets/default-group-picture.jpg";
 

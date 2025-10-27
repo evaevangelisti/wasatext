@@ -2,11 +2,7 @@
   <div class="profile">
     <label class="profile__picture-field">
       <img
-        :src="
-          user?.profilePicture
-            ? backendBaseUrl + user.profilePicture
-            : defaultProfilePicture
-        "
+        :src="resolveImageUrl(user?.profilePicture, defaultProfilePicture)"
         alt="Profile picture"
         class="profile__picture"
         :class="{ 'profile__picture--error': photoError }"
@@ -106,7 +102,7 @@
 <script setup>
 import { ref, watch, nextTick } from "vue";
 import api from "@/services/api";
-import { backendBaseUrl } from "@/services/baseUrl";
+import { resolveImageUrl } from "@/services/imageUrl";
 
 import defaultProfilePicture from "@/assets/default-profile-picture.jpg";
 

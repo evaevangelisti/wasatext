@@ -36,11 +36,7 @@
           @click="createPrivateConversation(usr.userId)"
         >
           <img
-            :src="
-              usr?.profilePicture
-                ? backendBaseUrl + usr.profilePicture
-                : defaultProfilePicture
-            "
+            :src="resolveImageUrl(usr?.profilePicture, defaultProfilePicture)"
             alt="Profile picture"
             class="user__picture"
           >
@@ -54,7 +50,7 @@
 <script setup>
 import { ref, watch } from "vue";
 import api from "@/services/api";
-import { backendBaseUrl } from "@/services/baseUrl";
+import { resolveImageUrl } from "@/services/imageUrl";
 
 import defaultProfilePicture from "@/assets/default-profile-picture.jpg";
 

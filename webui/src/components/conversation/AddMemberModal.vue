@@ -41,11 +41,7 @@
           <li v-for="user in usersToAdd" :key="user.userId" class="user-item">
             <button class="user__button" @click="addMember(user)">
               <img
-                :src="
-                  user.profilePicture
-                    ? backendBaseUrl + user.profilePicture
-                    : defaultProfilePicture
-                "
+                :src="resolveImageUrl(user.profilePicture, defaultProfilePicture)"
                 alt="Profile Picture"
                 class="user__picture"
               >
@@ -63,7 +59,7 @@
 <script setup>
 import { ref, watch, computed } from "vue";
 import api from "@/services/api";
-import { backendBaseUrl } from "@/services/baseUrl";
+import { resolveImageUrl } from "@/services/imageUrl";
 import defaultProfilePicture from "@/assets/default-profile-picture.jpg";
 
 const props = defineProps({

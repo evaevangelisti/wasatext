@@ -34,11 +34,7 @@
     <template v-if="selectedMember">
       <div class="conversation-info-sidebar__content">
         <img
-          :src="
-            selectedMember?.profilePicture
-              ? backendBaseUrl + selectedMember.profilePicture
-              : defaultProfilePicture
-          "
+          :src="resolveImageUrl(selectedMember?.profilePicture, defaultProfilePicture)"
           class="profile__picture"
           alt="Profile picture"
         >
@@ -154,11 +150,7 @@
             >
               <button class="user__button" @click="showContactInfo(member)">
                 <img
-                  :src="
-                    member?.profilePicture
-                      ? backendBaseUrl + member.profilePicture
-                      : defaultProfilePicture
-                  "
+                  :src="resolveImageUrl(member?.profilePicture, defaultProfilePicture)"
                   alt="Profile picture"
                   class="user__picture"
                 >
@@ -241,11 +233,7 @@
     <template v-else>
       <div class="conversation-info-sidebar__content">
         <img
-          :src="
-            otherUser?.profilePicture
-              ? backendBaseUrl + otherUser.profilePicture
-              : defaultProfilePicture
-          "
+          :src="resolveImageUrl(otherUser?.profilePicture, defaultProfilePicture)"
           class="profile__picture"
           alt="Profile picture"
         >
@@ -263,7 +251,7 @@
 
 <script setup>
 import { ref, computed, nextTick, watch } from "vue";
-import { backendBaseUrl } from "@/services/baseUrl";
+import { resolveImageUrl } from "@/services/imageUrl";
 import defaultProfilePicture from "@/assets/default-profile-picture.jpg";
 import defaultGroupPicture from "@/assets/default-group-picture.jpg";
 import api from "@/services/api";
@@ -337,9 +325,7 @@ watch(editedName, () => {
 
 const photoError = ref(false);
 const editedPhotoUrl = computed(() =>
-  props.conversation.photo
-    ? backendBaseUrl + props.conversation.photo
-    : defaultGroupPicture,
+  resolveImageUrl(props.conversation.photo, defaultGroupPicture)
 );
 
 async function onPhotoChange(event) {

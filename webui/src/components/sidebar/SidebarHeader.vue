@@ -46,11 +46,7 @@
       >
         <img
           v-if="user"
-          :src="
-            user.profilePicture
-              ? backendBaseUrl + user.profilePicture
-              : defaultProfilePicture
-          "
+          :src="resolveImageUrl(user.profilePicture, defaultProfilePicture)"
           alt="Profile"
           class="sidebar__profile-picture"
         >
@@ -61,7 +57,7 @@
 </template>
 
 <script setup>
-import { backendBaseUrl } from "@/services/baseUrl";
+import { resolveImageUrl } from "@/services/imageUrl";
 import defaultProfilePicture from "@/assets/default-profile-picture.jpg";
 
 const props = defineProps({

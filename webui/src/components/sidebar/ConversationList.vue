@@ -13,21 +13,13 @@
         >
           <img
             v-if="conversation.type === 'group'"
-            :src="
-              conversation.photo
-                ? backendBaseUrl + conversation.photo
-                : defaultGroupPicture
-            "
+            :src="resolveImageUrl(conversation.photo, defaultGroupPicture)"
             alt="Group Picture"
             class="conversation-photo"
           >
           <img
             v-else
-            :src="
-              getOtherUser(conversation)?.profilePicture
-                ? backendBaseUrl + getOtherUser(conversation).profilePicture
-                : defaultProfilePicture
-            "
+            :src="resolveImageUrl(getOtherUser(conversation)?.profilePicture, defaultProfilePicture)"
             alt="Profile Picture"
             class="conversation-photo"
           >
@@ -105,7 +97,7 @@
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount } from "vue";
 import api from "@/services/api";
-import { backendBaseUrl } from "@/services/baseUrl";
+import { resolveImageUrl } from "@/services/imageUrl";
 
 import defaultProfilePicture from "@/assets/default-profile-picture.jpg";
 import defaultGroupPicture from "@/assets/default-group-picture.jpg";

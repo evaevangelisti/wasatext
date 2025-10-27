@@ -14,21 +14,13 @@
       >
         <img
           v-if="conversation.type === 'group'"
-          :src="
-            conversation.photo
-              ? backendBaseUrl + conversation.photo
-              : defaultGroupPicture
-          "
+          :src="resolveImageUrl(conversation.photo, defaultGroupPicture)"
           alt="Group Picture"
           class="conversation-header__photo"
         >
         <img
           v-else
-          :src="
-            getOtherUser(conversation)?.profilePicture
-              ? backendBaseUrl + getOtherUser(conversation).profilePicture
-              : defaultProfilePicture
-          "
+          :src="resolveImageUrl(getOtherUser(conversation)?.profilePicture, defaultProfilePicture)"
           alt="Profile Picture"
           class="conversation-header__photo"
         >
@@ -71,11 +63,7 @@
             >
               <img
                 class="message__avatar"
-                :src="
-                  msg.sender.profilePicture
-                    ? backendBaseUrl + msg.sender.profilePicture
-                    : defaultProfilePicture
-                "
+                :src="resolveImageUrl(msg.sender.profilePicture, defaultProfilePicture)"
                 alt="Profile"
               >
             </template>
@@ -169,7 +157,7 @@
                 <template v-if="msg.attachment && !msg.content">
                   <div class="message__image-padding">
                     <img
-                      :src="backendBaseUrl + msg.attachment"
+                      :src="resolveImageUrl(msg.attachment)"
                       class="message__attachment"
                       alt="Attachment"
                     >
@@ -227,7 +215,7 @@
                   <div class="message__image-padding">
                     <img
                       :ref="(el) => setImageRef(msg.messageId, el)"
-                      :src="backendBaseUrl + msg.attachment"
+                      :src="resolveImageUrl(msg.attachment)"
                       class="message__attachment"
                       alt="Attachment"
                       @load="syncMessageWidth(msg.messageId)"
@@ -637,7 +625,7 @@ import {
   watchEffect,
 } from "vue";
 import api from "@/services/api";
-import { backendBaseUrl } from "@/services/baseUrl";
+import { resolveImageUrl } from "@/services/imageUrl";
 
 import defaultProfilePicture from "@/assets/default-profile-picture.jpg";
 import defaultGroupPicture from "@/assets/default-group-picture.jpg";
