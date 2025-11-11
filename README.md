@@ -1,6 +1,6 @@
 # WASAText
 
-Messaging app prototype developed for a university project.
+University project for WASA.
 
 ## Installation
 
